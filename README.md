@@ -52,3 +52,23 @@ For example, let’s consider the following scenario: _“As a user, considering
 
   * [2014] Sébastien Mosser, Philippe Collet, Mireille Blay-Fornarino. _“Exploiting the Internet of Things to Teach Domain-Specific Languages and Modeling”_ in Proceedings of the 10th Educators' Symposium @ MODELS 2014 (EduSymp'14), ACM, IEEE, pages 1-10, Springer LNCS, Valencia, Spain, 29 september 2014
     * [Article](http://www.i3s.unice.fr/~mosser/_media/research/edusymp14.pdf), [Slides](http://www.i3s.unice.fr/~mosser/_media/research/edusymp14_slides.pdf)
+
+## How to use
+Installer l'extension "Langium"
+
+1. >cd .\externals\langium\ArduinoML
+
+2. >npm i
+
+3. >npm run build
+
+### Pour convertir un fichier
+1. >cd .\externals\langium\demo
+2. >node ..\ArduinoML\bin\cli generate ..\demo\<file_name>.aml
+
+### Utiliser l'extension VSCode
+1. Ouvrir le dossier .\externals\langium\ArduinoML dans VSCode
+2. Ouvrrir le fichier out/extension.js
+3. Appuyer sur la touche F5
+
+-> Un VSCode avec l'extension s'ouvre
