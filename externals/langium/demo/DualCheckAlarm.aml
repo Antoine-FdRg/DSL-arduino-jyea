@@ -7,11 +7,17 @@ app RedButton initial state off {
 	states
 		off {
 			red_led <= LOW
-			b1 is HIGH => on
+			AND {
+				b1 is HIGH
+				b2 is HIGH
+			} => on
 		}
 		on {
 			red_led <= HIGH
-			b1 is HIGH => off
+			OR {
+				b1 is LOW
+				b2 is LOW
+			} => off
 		}
 }
 

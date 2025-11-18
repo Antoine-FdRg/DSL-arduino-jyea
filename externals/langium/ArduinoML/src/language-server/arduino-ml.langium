@@ -27,20 +27,37 @@ State :
 	name=ID '{'
 		actions+=Action
 		(actions+=Action)* 
-		transition=Transition
+		transition=TransitionList
 	'}';
 
 
 Action :
 	actuator=[Actuator:ID] '<=' value=Signal;
 
-Transition :
-	sensor=[Sensor:ID] 'is' value=Signal '=>' next=[State:ID];
+TransitionList:
+	(
+		connector=Logic '{'
+			(transitions+=TransitionList | transitions+=Transition)
+			(transitions+=TransitionList | transitions+=Transition)*
+		'}' '=>' next=[State:ID]
+	) | (
+		transitions+=Transition '=>' next=[State:ID]
+	);
+
+
+Transition:
+	sensor=[Sensor:ID] 'is' value=Signal;
 
 Signal:
-    value=(HIGH | LOW);
-terminal HIGH : 'HIGH';
-terminal LOW : 'LOW';
+	value=(HIGH | LOW);
+Logic:
+	value=(AND | OR);
+
+terminal HIGH: 'HIGH';
+terminal LOW: 'LOW';
+
+terminal AND: 'AND';
+terminal OR: 'OR';
 
 hidden terminal WS: /\s+/;
 terminal ID: /[_a-zA-Z][\w_]*/;

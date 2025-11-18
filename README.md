@@ -66,7 +66,7 @@ Installer l'extension "Langium"
 
 ### Pour convertir un fichier
 1. >cd .\externals\langium\demo
-2. >node ..\ArduinoML\bin\cli generate ..\demo\<file_name>.aml
+2. >node ..\ArduinoML\bin\cli generate .\<file_name>.aml
 
 ### Utiliser l'extension VSCode
 1. Ouvrir le dossier .\externals\langium\ArduinoML dans VSCode

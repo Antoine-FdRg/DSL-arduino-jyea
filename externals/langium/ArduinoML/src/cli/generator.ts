@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { CompositeGeneratorNode, NL, toString } from 'langium';
 import path from 'path';
-import { Action, Actuator, App, Sensor, State, Transition } from '../language-server/generated/ast';
+import { Action, Actuator, App, Sensor, State, TransitionList } from '../language-server/generated/ast';
 import { extractDestinationAndName } from './cli-util';
 
 export function generateInoFile(app: App, filePath: string, destination: string | undefined): string {
@@ -98,13 +98,55 @@ long `+brick.name+`LastDebounceTime = 0;
 					digitalWrite(`+action.actuator.ref?.outputPin+`,`+action.value.value+`);`)
 	}
 
-	function compileTransition(transition: Transition, fileNode:CompositeGeneratorNode) {
+function compileTransition(transition: TransitionList, fileNode: CompositeGeneratorNode) {
+	function isLeaf(t: any): boolean {
+		return !!t.sensor;
+	}
+
+	function collectSensors(node: any, set: Set<string>) {
+		if (isLeaf(node)) {
+			const name = node.sensor.ref?.name;
+			if (name) set.add(name);
+		} else {
+			for (const c of node.transitions || []) {
+				collectSensors(c, set);
+			}
+		}
+	}
+
+	function buildCondition(node: any): string {
+		if (isLeaf(node)) {
+			const sref = node.sensor.ref;
+			const pin = sref?.inputPin;
+			const name = sref?.name;
+			const val = node.value.value;
+			return `( digitalRead(${pin}) == ${val} && ${name}BounceGuard )`;
+		} else {
+			const parts: string[] = [];
+			for (const c of node.transitions || []) {
+				parts.push(buildCondition(c));
+			}
+			const op = node.connector?.value === 'AND' ? '&&' : '||';
+			return `( ` + parts.join(` ${op} `) + ` )`;
+		}
+	}
+
+	// collect all sensor names involved in this transition (for debounce vars)
+	const sensors = new Set<string>();
+	collectSensors(transition, sensors);
+
+	// update bounce guards for involved sensors
+	for (const s of Array.from(sensors)) {
 		fileNode.append(`
-		 			`+transition.sensor.ref?.name+`BounceGuard = millis() - `+transition.sensor.ref?.name+`LastDebounceTime > debounce;
-					if( digitalRead(`+transition.sensor.ref?.inputPin+`) == `+transition.value.value+` && `+transition.sensor.ref?.name+`BounceGuard) {
-						`+transition.sensor.ref?.name+`LastDebounceTime = millis();
-						currentState = `+transition.next.ref?.name+`;
-					}
-		`)
+					`+ s + `BounceGuard = millis() - ` + s + `LastDebounceTime > debounce;`, NL)
+	}
+
+	const condition = buildCondition(transition);
+
+	fileNode.append(`
+				if( `+ condition + ` ) {
+					`+ Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t\t') + `
+					currentState = `+ transition.next.ref?.name + `;
+				}`, NL)
 	}
 
