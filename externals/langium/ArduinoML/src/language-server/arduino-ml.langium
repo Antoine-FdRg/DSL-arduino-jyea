@@ -37,12 +37,12 @@ Action :
 TransitionList:
 	(
 		connector=Logic '{'
-			(transitions+=TransitionList | transitions+=Transition)
-			(transitions+=TransitionList | transitions+=Transition)*
+			(transitions+=Transition)
+			(transitions+=Transition)*
 		'}' '=>' next=[State:ID]
 	) | (
-		transitions+=Transition '=>' next=[State:ID]
-	);
+		transitions+=Transition
+	) '=>' next=[State:ID];
 
 
 Transition:

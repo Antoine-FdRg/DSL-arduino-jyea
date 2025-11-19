@@ -420,90 +420,33 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
                 "value": "{"
               },
               {
-                "$type": "Alternatives",
-                "elements": [
-                  {
-                    "$type": "Assignment",
-                    "feature": "transitions",
-                    "operator": "+=",
-                    "terminal": {
-                      "$type": "RuleCall",
-                      "rule": {
-                        "$ref": "#/rules@6"
-                      },
-                      "arguments": []
-                    }
+                "$type": "Assignment",
+                "feature": "transitions",
+                "operator": "+=",
+                "terminal": {
+                  "$type": "RuleCall",
+                  "rule": {
+                    "$ref": "#/rules@7"
                   },
-                  {
-                    "$type": "Assignment",
-                    "feature": "transitions",
-                    "operator": "+=",
-                    "terminal": {
-                      "$type": "RuleCall",
-                      "rule": {
-                        "$ref": "#/rules@7"
-                      },
-                      "arguments": []
-                    }
-                  }
-                ]
+                  "arguments": []
+                }
               },
               {
-                "$type": "Alternatives",
-                "elements": [
-                  {
-                    "$type": "Assignment",
-                    "feature": "transitions",
-                    "operator": "+=",
-                    "terminal": {
-                      "$type": "RuleCall",
-                      "rule": {
-                        "$ref": "#/rules@6"
-                      },
-                      "arguments": []
-                    }
+                "$type": "Assignment",
+                "feature": "transitions",
+                "operator": "+=",
+                "terminal": {
+                  "$type": "RuleCall",
+                  "rule": {
+                    "$ref": "#/rules@7"
                   },
-                  {
-                    "$type": "Assignment",
-                    "feature": "transitions",
-                    "operator": "+=",
-                    "terminal": {
-                      "$type": "RuleCall",
-                      "rule": {
-                        "$ref": "#/rules@7"
-                      },
-                      "arguments": []
-                    }
-                  }
-                ],
+                  "arguments": []
+                },
                 "cardinality": "*"
               },
               {
                 "$type": "Keyword",
                 "value": "}"
-              },
-              {
-                "$type": "Keyword",
-                "value": "=>"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "next",
-                "operator": "=",
-                "terminal": {
-                  "$type": "CrossReference",
-                  "type": {
-                    "$ref": "#/rules@4"
-                  },
-                  "terminal": {
-                    "$type": "RuleCall",
-                    "rule": {
-                      "$ref": "#/rules@15"
-                    },
-                    "arguments": []
-                  },
-                  "deprecatedSyntax": false
-                }
               }
             ]
           },

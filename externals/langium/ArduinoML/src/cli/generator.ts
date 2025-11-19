@@ -99,54 +99,33 @@ long `+brick.name+`LastDebounceTime = 0;
 	}
 
 function compileTransition(transition: TransitionList, fileNode: CompositeGeneratorNode) {
-	function isLeaf(t: any): boolean {
-		return !!t.sensor;
-	}
+	const transitions: any[] = (transition as any).transitions || [];
 
-	function collectSensors(node: any, set: Set<string>) {
-		if (isLeaf(node)) {
-			const name = node.sensor.ref?.name;
-			if (name) set.add(name);
-		} else {
-			for (const c of node.transitions || []) {
-				collectSensors(c, set);
-			}
-		}
-	}
-
-	function buildCondition(node: any): string {
-		if (isLeaf(node)) {
-			const sref = node.sensor.ref;
-			const pin = sref?.inputPin;
-			const name = sref?.name;
-			const val = node.value.value;
-			return `( digitalRead(${pin}) == ${val} && ${name}BounceGuard )`;
-		} else {
-			const parts: string[] = [];
-			for (const c of node.transitions || []) {
-				parts.push(buildCondition(c));
-			}
-			const op = node.connector?.value === 'AND' ? '&&' : '||';
-			return `( ` + parts.join(` ${op} `) + ` )`;
-		}
-	}
-
-	// collect all sensor names involved in this transition (for debounce vars)
 	const sensors = new Set<string>();
-	collectSensors(transition, sensors);
+	for (const t of transitions) {
+		const name = t.sensor?.ref?.name;
+		if (name) sensors.add(name);
+	}
 
-	// update bounce guards for involved sensors
 	for (const s of Array.from(sensors)) {
 		fileNode.append(`
-					`+ s + `BounceGuard = millis() - ` + s + `LastDebounceTime > debounce;`, NL)
+			` + s + `BounceGuard = millis() - ` + s + `LastDebounceTime > debounce;`, NL)
 	}
 
-	const condition = buildCondition(transition);
+	const parts = transitions.map(t => {
+		const pin = t.sensor?.ref?.inputPin;
+		const name = t.sensor?.ref?.name;
+		const val = t.value?.value;
+		return `( digitalRead(${pin}) == ${val} && ${name}BounceGuard )`;
+	});
+
+	const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
+	const condition = parts.length > 1 ? `( ` + parts.join(op) + ` )` : (parts[0] || 'false');
 
 	fileNode.append(`
-				if( `+ condition + ` ) {
-					`+ Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t\t') + `
-					currentState = `+ transition.next.ref?.name + `;
-				}`, NL)
-	}
+			if( ` + condition + ` ) {
+				` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t') + `
+				currentState = ` + (transition as any).next.ref?.name + `;
+			}`, NL)
+}
 

@@ -119,11 +119,11 @@ export function isTransition(item: unknown): item is Transition {
 }
 
 export interface TransitionList extends AstNode {
-    readonly $container: State | TransitionList;
+    readonly $container: State;
     readonly $type: 'TransitionList';
     connector?: Logic
-    next: Reference<State>
-    transitions: Array<Transition> | Array<TransitionList>
+    next?: Reference<State>
+    transitions: Array<Transition>
 }
 
 export const TransitionList = 'TransitionList';
