@@ -447,6 +447,29 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
               {
                 "$type": "Keyword",
                 "value": "}"
+              },
+              {
+                "$type": "Keyword",
+                "value": "=>"
+              },
+              {
+                "$type": "Assignment",
+                "feature": "next",
+                "operator": "=",
+                "terminal": {
+                  "$type": "CrossReference",
+                  "type": {
+                    "$ref": "#/rules@4"
+                  },
+                  "terminal": {
+                    "$type": "RuleCall",
+                    "rule": {
+                      "$ref": "#/rules@15"
+                    },
+                    "arguments": []
+                  },
+                  "deprecatedSyntax": false
+                }
               }
             ]
           },
