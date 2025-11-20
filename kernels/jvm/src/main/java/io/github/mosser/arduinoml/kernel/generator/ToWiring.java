@@ -4,6 +4,9 @@ import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.*;
 import io.github.mosser.arduinoml.kernel.structural.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Quick and dirty visitor to support the generation of Wiring code
  */
@@ -97,12 +100,8 @@ public class ToWiring extends Visitor<StringBuffer> {
 				action.accept(this);
 			}
 
-			if (state.getTransition() != null) {
-				state.getTransition().accept(this);
-				w("\t\tbreak;\n");
-			}
-			return;
-		}
+            state.getTransitionList().accept(this);
+        }
 
 	}
 
@@ -113,30 +112,38 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		if(context.get("pass") == PASS.TWO) {
 			String sensorName = transition.getSensor().getName();
-			w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
-					sensorName, sensorName));
-			w(String.format("\t\t\tif( digitalRead(%d) == %s && %sBounceGuard) {\n",
-					transition.getSensor().getPin(), transition.getValue(), sensorName));
 			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
-			w("\t\t\t\tcurrentState = " + transition.getNext().getName() + ";\n");
-			w("\t\t\t}\n");
-			return;
 		}
 	}
 
-	@Override
-	public void visit(TimeTransition transition) {
-		if(context.get("pass") == PASS.ONE) {
-			return;
-		}
-		if(context.get("pass") == PASS.TWO) {
-			int delayInMS = transition.getDelay();
-			w(String.format("\t\t\tdelay(%d);\n", delayInMS));
-			w("\t\t\t\tcurrentState = " + transition.getNext().getName() + ";\n");
-			w("\t\t\t}\n");
-			return;
-		}
-	}
+    @Override
+    public void visit(TransitionList transitionList) {
+        List<String> sensorsName = transitionList.getTransitions().stream()
+                .filter(SignalTransition.class::isInstance).map(
+                        t -> ((SignalTransition) t).getSensor().getName()
+                ).collect(Collectors.toList());
+        for (String name : sensorsName) {
+            w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
+                    name, name));
+        }
+
+        List<String> parts = transitionList.getTransitions().stream()
+                .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
+                        ((SignalTransition) t).getSensor().getPin(),
+                        ((SignalTransition) t).getValue(),
+                        ((SignalTransition) t).getSensor().getName()))
+                .collect(Collectors.toList());
+
+        String connector = transitionList.getConnector() == LOGIC.OR ? " || " : " && ";
+        String condition = parts.size() > 1 ? "(" + String.join(connector, parts) + ")" : parts.get(0);
+        w(String.format("\t\t\tif( %s ) {\n", condition));
+        for (Transition transition : transitionList.getTransitions()) {
+            transition.accept(this);
+        }
+        w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
+        w("\t\t\t}\n");
+    }
+
 
 	@Override
 	public void visit(Action action) {

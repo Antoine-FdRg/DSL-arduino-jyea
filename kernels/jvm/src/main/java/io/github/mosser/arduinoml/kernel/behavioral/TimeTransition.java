@@ -1,9 +1,8 @@
 package io.github.mosser.arduinoml.kernel.behavioral;
 
 import io.github.mosser.arduinoml.kernel.generator.Visitor;
-import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
-import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
+// Currently unused because not in base specs
 public class TimeTransition extends Transition {
 
     private int delayInMS;
@@ -19,6 +18,6 @@ public class TimeTransition extends Transition {
 
     @Override
     public void accept(Visitor visitor) {
-        visitor.visit(this);
+//        visitor.visit(this);
     }
 }
