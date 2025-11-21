@@ -142,6 +142,7 @@ public class ToWiring extends Visitor<StringBuffer> {
         }
         w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
         w("\t\t\t}\n");
+		w("\t\t\tbreak;\n");
     }
 
 
