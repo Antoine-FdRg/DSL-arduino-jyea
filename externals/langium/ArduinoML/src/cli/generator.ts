@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { CompositeGeneratorNode, NL, toString } from 'langium';
 import path from 'path';
-import { Action, Actuator, App, Sensor, State, Transition } from '../language-server/generated/ast';
+import { Action, Actuator, App, Sensor, State, TransitionList } from '../language-server/generated/ast';
 import { extractDestinationAndName } from './cli-util';
 
 export function generateInoFile(app: App, filePath: string, destination: string | undefined): string {
@@ -98,13 +98,34 @@ long `+brick.name+`LastDebounceTime = 0;
 					digitalWrite(`+action.actuator.ref?.outputPin+`,`+action.value.value+`);`)
 	}
 
-	function compileTransition(transition: Transition, fileNode:CompositeGeneratorNode) {
-		fileNode.append(`
-		 			`+transition.sensor.ref?.name+`BounceGuard = millis() - `+transition.sensor.ref?.name+`LastDebounceTime > debounce;
-					if( digitalRead(`+transition.sensor.ref?.inputPin+`) == `+transition.value.value+` && `+transition.sensor.ref?.name+`BounceGuard) {
-						`+transition.sensor.ref?.name+`LastDebounceTime = millis();
-						currentState = `+transition.next.ref?.name+`;
-					}
-		`)
+function compileTransition(transition: TransitionList, fileNode: CompositeGeneratorNode) {
+	const transitions: any[] = (transition as any).transitions || [];
+
+	const sensors = new Set<string>();
+	for (const t of transitions) {
+		const name = t.sensor?.ref?.name;
+		if (name) sensors.add(name);
 	}
+
+	for (const s of Array.from(sensors)) {
+		fileNode.append(`
+			` + s + `BounceGuard = millis() - ` + s + `LastDebounceTime > debounce;`, NL)
+	}
+
+	const parts = transitions.map(t => {
+		const pin = t.sensor?.ref?.inputPin;
+		const name = t.sensor?.ref?.name;
+		const val = t.value?.value;
+		return `( digitalRead(${pin}) == ${val} && ${name}BounceGuard )`;
+	});
+
+	const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
+	const condition = parts.length > 1 ? `( ` + parts.join(op) + ` )` : (parts[0] || 'false');
+
+	fileNode.append(`
+			if( ` + condition + ` ) {
+				` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t') + `
+				currentState = ` + (transition as any).next.ref?.name + `;
+			}`, NL)
+}
 

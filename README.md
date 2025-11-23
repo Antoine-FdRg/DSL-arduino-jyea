@@ -60,15 +60,17 @@ Installer l'extension "Langium"
 
 2. >npm i
 
-3. >npm run build
+3. >npm run langium:generate
+
+4. >npm run build
 
 ### Pour convertir un fichier
 1. >cd .\externals\langium\demo
-2. >node ..\ArduinoML\bin\cli generate ..\demo\<file_name>.aml
+2. >node ..\ArduinoML\bin\cli generate .\<file_name>.aml
 
 ### Utiliser l'extension VSCode
 1. Ouvrir le dossier .\externals\langium\ArduinoML dans VSCode
-2. Ouvrrir le fichier out/extension.js
+2. Ouvrir le fichier out/extension.js
 3. Appuyer sur la touche F5
 
 -> Un VSCode avec l'extension s'ouvre

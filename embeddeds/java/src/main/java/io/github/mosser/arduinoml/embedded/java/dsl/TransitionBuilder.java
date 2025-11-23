@@ -2,20 +2,18 @@ package io.github.mosser.arduinoml.embedded.java.dsl;
 
 
 import io.github.mosser.arduinoml.kernel.behavioral.SignalTransition;
-import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
 
 public class TransitionBuilder {
 
 
-    private TransitionTableBuilder parent;
+    private TransitionListBuilder parent;
 
     private SignalTransition local;
 
-    TransitionBuilder(TransitionTableBuilder parent, String source) {
+    TransitionBuilder(TransitionListBuilder parent) {
         this.parent = parent;
         this.local = new SignalTransition();
-        parent.findState(source).setTransition(local);
     }
 
 
@@ -24,20 +22,15 @@ public class TransitionBuilder {
         return this;
     }
 
-    public TransitionBuilder isHigh() {
+    public TransitionListBuilder isHigh() {
         local.setValue(SIGNAL.HIGH);
-        return this;
-    }
-
-    public TransitionBuilder isLow() {
-        local.setValue(SIGNAL.LOW);
-        return this;
-    }
-
-    public TransitionTableBuilder goTo(String state) {
-        local.setNext(parent.findState(state));
+        parent.addTransition(local);
         return parent;
     }
 
-
+    public TransitionListBuilder isLow() {
+        local.setValue(SIGNAL.LOW);
+        parent.addTransition(local);
+        return parent;
+    }
 }

@@ -6,3 +6,4 @@ embeddeds/haskell/dist
 # Node
 node_modules
 generated
+out
