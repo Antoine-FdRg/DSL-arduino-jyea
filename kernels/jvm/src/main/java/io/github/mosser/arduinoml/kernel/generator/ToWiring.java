@@ -22,6 +22,10 @@ public class ToWiring extends Visitor<StringBuffer> {
 		result.append(String.format("%s",s));
 	}
 
+	private String escape(String s) {
+		return s.replace("\\", "\\\\").replace("\"", "\\\"");
+	}
+
 	@Override
 	public void visit(App app) {
 		//first pass, create global vars
@@ -85,6 +89,67 @@ public class ToWiring extends Visitor<StringBuffer> {
 		if(context.get("pass") == PASS.TWO) {
 			w(String.format("  pinMode(%d, INPUT);  // %s [Sensor]\n", sensor.getPin(), sensor.getName()));
 			return;
+		}
+	}
+
+	@Override
+	public void visit(LCDScreen lcd) {
+		if (context.get("pass") == PASS.ONE) {
+			w("#include <LiquidCrystal.h>\n");
+			w(String.format("LiquidCrystal %s(%d, %d, %d, %d, %d, %d);\n",
+					lcd.getName(),
+					lcd.getRsPin(),
+					lcd.getEnablePin(),
+					lcd.getD4Pin(),
+					lcd.getD5Pin(),
+					lcd.getD6Pin(),
+					lcd.getD7Pin()
+			));
+			return;
+		}
+		if (context.get("pass") == PASS.TWO) {
+			w(String.format("  %s.begin(16, 2); // LCD Screen\n", lcd.getName()));
+		}
+	}
+
+	@Override
+	public void visit(LCDAction lcdAction) {
+		if (context.get("pass") == PASS.ONE) {
+			return;
+		}
+		if (context.get("pass") == PASS.TWO) {
+
+			LCDScreen screen = lcdAction.getScreen();
+			String name = screen.getName();
+			w(String.format("\t\t\t%s.setCursor(0, 0);\n", name));
+			for (MessagePart part : lcdAction.getMessage()) {
+				if (part instanceof ConstantText) {
+					ConstantText t = (ConstantText) part;
+					w(String.format("\t\t\t%s.print(\"%s\");\n",
+							name, escape(t.getValue())));
+				}
+
+				if (part instanceof BrickValueRef) {
+					BrickValueRef ref = (BrickValueRef) part;
+					Brick brick = ref.getBrick();
+
+					if (brick instanceof Sensor) {
+						Sensor s = (Sensor) brick;
+						w(String.format(
+								"\t\t\t%s.print((digitalRead(%d) == HIGH ? \"HIGH\" : \"LOW\"));\n",
+								name, s.getPin()
+						));
+					}
+
+					if (brick instanceof Actuator) {
+						Actuator a = (Actuator) brick;
+						w(String.format(
+								"\t\t\t%s.print((digitalRead(%d) == HIGH ? \"ON\" : \"OFF\"));\n",
+								name, a.getPin()
+						));
+					}
+				}
+			}
 		}
 	}
 

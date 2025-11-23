@@ -5,6 +5,7 @@ import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.Brick;
+import io.github.mosser.arduinoml.kernel.structural.LCDScreen;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
 import java.util.Map;
@@ -42,6 +43,19 @@ public class AppBuilder {
 
     public static Brick sensor(String name, int port) { return createBrick(Sensor.class, name, port);  }
     public static Brick actuator(String name, int port) { return createBrick(Actuator.class, name, port);  }
+    public static LCDScreen lcd(String name) {
+        LCDScreen lcd = new LCDScreen();
+        lcd.setName(name);
+        lcd.setColumns(16);
+        lcd.setRows(2);
+        lcd.setRsPin(2);
+        lcd.setEnablePin(4);
+        lcd.setD4Pin(5);
+        lcd.setD5Pin(6);
+        lcd.setD6Pin(7);
+        lcd.setD7Pin(8);
+        return lcd;
+    }
 
     private static Brick createBrick(Class< ? extends Brick> kind, String name, int port) {
         try {
@@ -97,4 +111,17 @@ public class AppBuilder {
         return b.map(sensor -> Optional.of((Actuator) sensor)).orElse(Optional.empty());
     }
 
+    Optional<LCDScreen> findLCD(String name) {
+        return theApp.getBricks().stream()
+                .filter(b -> b instanceof LCDScreen)
+                .map(b -> (LCDScreen) b)
+                .filter(lcd -> lcd.getName().equals(name))
+                .findFirst();
+    }
+
+    Optional<Brick> findBrick(String name) {
+        return theApp.getBricks().stream()
+                .filter(b -> b.getName().equals(name))
+                .findFirst();
+    }
 }
