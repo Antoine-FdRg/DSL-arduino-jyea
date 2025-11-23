@@ -4,7 +4,10 @@ import io.github.mosser.arduinoml.kernel.behavioral.State;
 import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class TransitionTableBuilder {
 
@@ -42,5 +45,13 @@ public class TransitionTableBuilder {
         return s;
     }
 
+    State getErrorState(int errorCode) {
+        if(!states.containsKey("error_" + errorCode)) {
+            parent.hasForState("error_" + errorCode).endState();
+            parent.theApp.useErrorState();
+            states = parent.theApp.getStates().stream().collect(Collectors.toMap(State::getName, Function.identity()));
+        }
+        return states.get("error_" + errorCode);
+    }
 
 }

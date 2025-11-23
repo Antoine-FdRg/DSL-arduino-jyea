@@ -14,6 +14,7 @@ public class App implements NamedElement, Visitable {
 	private List<Brick> bricks = new ArrayList<Brick>();
 	private List<State> states = new ArrayList<State>();
 	private State initial;
+	private boolean useErrorState = false;
 
 	@Override
 	public String getName() {
@@ -52,5 +53,13 @@ public class App implements NamedElement, Visitable {
 	@Override
 	public void accept(Visitor visitor) {
 		visitor.visit(this);
+	}
+
+	public boolean isUsingErrorState() {
+		return useErrorState;
+	}
+
+	public void useErrorState() {
+		this.useErrorState = true;
 	}
 }

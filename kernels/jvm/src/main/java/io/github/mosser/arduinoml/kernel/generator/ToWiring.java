@@ -52,6 +52,9 @@ public class ToWiring extends Visitor<StringBuffer> {
 		for(Brick brick: app.getBricks()){
 			brick.accept(this);
 		}
+		if (app.isUsingErrorState()) {
+			w("  pinMode(12, OUTPUT); // Onboard LED for error blinking\n");
+		}
 		w("}\n");
 
 		w("\nvoid loop() {\n" +
@@ -61,6 +64,44 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		w("\t}\n" +
 			"}");
+		generateErrorBlink(app.isUsingErrorState());
+	}
+
+	private void generateErrorBlink(boolean useErrorState) {
+		if (!useErrorState) {
+			return;
+		}
+		w("\n\n" +
+				"long blinkDuration = 200 ;\n" +
+				"long pauseDuration = 900;\n" +
+				"long currentBlinkNumber = 0;\n" +
+				"boolean currentBlinkState = false;\n" +
+				"boolean pauseBlink = false;\n" +
+				"long currentBlinkDuration = 0;\n" +
+				"\n" +
+				"void errorBlink(long errorCode){\n" +
+				"  if(pauseBlink){\n" +
+				"    if(millis() - currentBlinkDuration > pauseDuration){\n" +
+				"      pauseBlink = false;\n" +
+				"    }\n" +
+				"    return;\n" +
+				"  }\n" +
+				"  if(millis() - currentBlinkDuration > blinkDuration){\n" +
+				"      currentBlinkDuration = millis();\n" +
+				"      if(currentBlinkState){\n" +
+				"        digitalWrite(12,LOW);\n" +
+				"        currentBlinkNumber++;      \n" +
+				"        if(currentBlinkNumber == errorCode){\n" +
+				"          currentBlinkNumber = 0;\n" +
+				"          pauseBlink = true;\n" +
+				"          currentBlinkDuration = millis();\n" +
+				"        }\n" +
+				"      }else{\n" +
+				"        digitalWrite(12,HIGH);\n" +
+				"      }\n" +
+				"      currentBlinkState = !currentBlinkState;\n" +
+				"  }\n" +
+				"}");
 	}
 
 	@Override
@@ -96,11 +137,16 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		if(context.get("pass") == PASS.TWO) {
 			w("\t\tcase " + state.getName() + ":\n");
-			for (Action action : state.getActions()) {
-				action.accept(this);
-			}
 
-            state.getTransitionList().accept(this);
+			if(state.getName().startsWith("error_")){
+				w(String.format("\t\t\terrorBlink(%s);\n",state.getName().substring(6)));
+			} else {
+				for (Action action : state.getActions()) {
+					action.accept(this);
+				}
+			}
+      state.getTransitionList().accept(this);
+			w("\t\t\tbreak;\n");
         }
 
 	}
@@ -118,6 +164,9 @@ public class ToWiring extends Visitor<StringBuffer> {
 
     @Override
     public void visit(TransitionList transitionList) {
+		if(transitionList.getTransitions().isEmpty()){
+			return;
+		}
         List<String> sensorsName = transitionList.getTransitions().stream()
                 .filter(SignalTransition.class::isInstance).map(
                         t -> ((SignalTransition) t).getSensor().getName()
@@ -141,8 +190,7 @@ public class ToWiring extends Visitor<StringBuffer> {
             transition.accept(this);
         }
         w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
-        w("\t\t\t}\n");
-		w("\t\t\tbreak;\n");
+		w("\t\t\t}\n");
     }
 
 
