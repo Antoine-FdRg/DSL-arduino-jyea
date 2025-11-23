@@ -27,8 +27,15 @@ function compile(app:App, fileNode:CompositeGeneratorNode){
 // Application name: `+app.name+`
 
 long debounce = 200;
-enum STATE {`+app.states.map(s => s.name).join(', ')+`};
-
+enum STATE {`+app.states.map(s => s.name).join(', '));
+		if (isUsingErrorState(app)) {
+			const errorCodes = getErrorCodes(app);
+			const uniqueErrorCodes = Array.from(new Set(errorCodes));
+			for (const code of uniqueErrorCodes) {
+				fileNode.append(`, error_` + code);
+			};
+		}
+		fileNode.append(`};
 STATE currentState = `+app.initial.ref?.name+`;`
     ,NL);
 	
@@ -51,6 +58,7 @@ long `+brick.name+`LastDebounceTime = 0;
         }
 	}
 
+		compileErrorLedActuatorCode(fileNode);
 
     fileNode.append(`
 	}
@@ -58,16 +66,25 @@ long `+brick.name+`LastDebounceTime = 0;
 			switch(currentState){`,NL)
 			for(const state of app.states){
 				compileState(state, fileNode)
-            }
+			}
+		if(isUsingErrorState(app)){
+				const errorCodes = getErrorCodes(app);
+				const uniqueErrorCodes = Array.from(new Set(errorCodes));
+				for(const code of uniqueErrorCodes){
+				fileNode.append(`
+				case error_`+code+` :
+					errorBlink(`+code+`);
+					break;`, NL);
+				}
+		}
 	fileNode.append(`
 		}
 	}
 	`,NL);
 
-
-
-
-    }
+		if(isUsingErrorState(app)){
+			generateErrorMethodCode(fileNode);
+		}
 
 	function compileActuator(actuator: Actuator, fileNode: CompositeGeneratorNode) {
         fileNode.append(`
@@ -121,11 +138,66 @@ function compileTransition(transition: TransitionList, fileNode: CompositeGenera
 
 	const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
 	const condition = parts.length > 1 ? `( ` + parts.join(op) + ` )` : (parts[0] || 'false');
+	const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
 
 	fileNode.append(`
 			if( ` + condition + ` ) {
 				` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t') + `
-				currentState = ` + (transition as any).next.ref?.name + `;
-			}`, NL)
+					currentState = ` + (nextName ? nextName : 'currentState') + `;
+				}`)
+	}
+
+
+	function compileErrorLedActuatorCode(fileNode: CompositeGeneratorNode) {
+		if (isUsingErrorState(app)) {
+			fileNode.append(`
+		pinMode(12, OUTPUT); // Onboard LED for error blinking`, NL);
+		}
+	}
+
+	function isUsingErrorState(app: App): boolean {
+		return app.states.some(s => s.transition && (s.transition as any).errorCode !== undefined);
+	}
+
+	function getErrorCodes(app: App): number[] {
+		return app.states.map(s => s.transition).filter(t => t && (t as any).errorCode !== undefined).map(t => (t as any).errorCode);
+	}
+
+	function generateErrorMethodCode(fileNode: CompositeGeneratorNode) {
+		fileNode.append(`
+
+long blinkDuration = 200 ;
+long pauseDuration = 900;
+long currentBlinkNumber = 0;
+boolean currentBlinkState = false;
+boolean pauseBlink = false;
+long currentBlinkDuration = 0;
+
+void errorBlink(long errorCode){
+	if(pauseBlink){
+		if(millis() - currentBlinkDuration > pauseDuration){
+			pauseBlink = false;
+		}
+		return;
+	}
+	if(millis() - currentBlinkDuration > blinkDuration){
+			currentBlinkDuration = millis();
+			if(currentBlinkState){
+				digitalWrite(12,LOW);
+				currentBlinkNumber++;      
+				if(currentBlinkNumber == errorCode){
+					currentBlinkNumber = 0;
+					pauseBlink = true;
+					currentBlinkDuration = millis();
+				}
+			}else{
+				digitalWrite(12,HIGH);
+			}
+			currentBlinkState = !currentBlinkState;
+	}
 }
 
+`, NL);
+	}
+		
+}

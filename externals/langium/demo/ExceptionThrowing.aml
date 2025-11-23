@@ -1,0 +1,14 @@
+app RedButton initial state off {
+	bricks
+		Sensor b1 : 9
+		Sensor b2 : 10
+	
+	states
+		off {
+			AND {
+				b1 is HIGH
+				b2 is HIGH
+			} => error 2
+		}
+}
+
