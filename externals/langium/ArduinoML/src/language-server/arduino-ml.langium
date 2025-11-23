@@ -1,57 +1,80 @@
 grammar ArduinoMl
 
 entry App:
-	'app' name=ID 'initial' 'state' initial=[State:ID]
-	'{'
-		'bricks'
-		bricks+=Brick
-		(bricks+=Brick)* 
-		
-		'states'
-		states+=State
-		( states+=State)* 		
-	'}';
+    'app' name=ID
+    (serial=SerialConfig)?
+    'initial' 'state' initial=[State:ID]
+    '{'
+       'bricks'
+       bricks+=Brick
+       (bricks+=Brick)*
+
+       'states'
+       states+=State
+       ( states+=State)*
+    '}';
+
+SerialConfig:
+    'serial' baudRate=INT;
 
 Brick :
-	(Actuator | Sensor);
+    (Actuator | Sensor);
 
 Actuator:
-	{infer Actuator}
-	'Actuator' name=ID ':' outputPin=INT;
+    {infer Actuator}
+    'Actuator' name=ID ':' outputPin=INT;
 
 Sensor :
-	{infer Sensor}
-	'Sensor'  name=ID ':' inputPin=INT;
-	
-State :
-	name=ID '{'
-		actions+=Action
-		(actions+=Action)* 
-		transition=TransitionList
-	'}';
+    DigitalSensor | SerialSensor;
 
+DigitalSensor:
+    {infer DigitalSensor}
+    'Sensor' name=ID ':' inputPin=INT;
+
+SerialSensor:
+    {infer SerialSensor}
+    'SerialSensor' name=ID;
+
+State :
+    name=ID '{'
+       actions+=Action
+       (actions+=Action)*
+       transition=TransitionList
+    '}';
 
 Action :
-	actuator=[Actuator:ID] '<=' value=Signal;
+    SetAction | SendAction;
+
+SetAction:
+    actuator=[Actuator:ID] '<=' value=Signal;
+
+SendAction:
+    'send' message=STRING;
 
 TransitionList:
-	(
-		connector=Logic '{'
-			(transitions+=Transition)
-			(transitions+=Transition)*
-		'}' '=>' next=[State:ID]
-	) | (
-		transitions+=Transition
-	) '=>' next=[State:ID];
-
+    (
+       connector=Logic '{'
+          (transitions+=Transition)
+          (transitions+=Transition)*
+       '}' '=>' next=[State:ID]
+    ) | (
+       transitions+=Transition
+    ) '=>' next=[State:ID];
 
 Transition:
-	sensor=[Sensor:ID] 'is' value=Signal;
+    DigitalTransition | SerialTransition;
+
+DigitalTransition:
+    sensor=[DigitalSensor:ID] 'is' value=Signal;
+
+SerialTransition:
+    sensor=[SerialSensor:ID] 'receives' (pattern=STRING | any?='any');
 
 Signal:
-	value=(HIGH | LOW);
+    value=(HIGH | LOW);
+
 Logic:
-	value=(AND | OR);
+    value=(AND | OR);
 
 terminal HIGH: 'HIGH';
 terminal LOW: 'LOW';
