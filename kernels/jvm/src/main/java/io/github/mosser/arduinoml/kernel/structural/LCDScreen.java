@@ -5,7 +5,7 @@ import io.github.mosser.arduinoml.kernel.generator.Visitor;
 public class LCDScreen extends Brick {
     private int columns;
     private int rows;
-    private int rs, enable, d4, d5, d6, d7;
+    private int rs, enable, d4, d5, d6, d7, d8;
 
     public int getColumns() {
         return columns;
@@ -55,6 +55,8 @@ public class LCDScreen extends Brick {
     public void setD7Pin(int d7) {
         this.d7 = d7;
     }
+    public int getD8Pin() { return d8; }
+    public void setD8Pin(int d8) { this.d8 = d8; }
 
     @Override
     public void accept(Visitor visitor) {

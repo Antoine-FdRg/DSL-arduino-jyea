@@ -96,14 +96,15 @@ public class ToWiring extends Visitor<StringBuffer> {
 	public void visit(LCDScreen lcd) {
 		if (context.get("pass") == PASS.ONE) {
 			w("#include <LiquidCrystal.h>\n");
-			w(String.format("LiquidCrystal %s(%d, %d, %d, %d, %d, %d);\n",
+			w(String.format("LiquidCrystal %s(%d, %d, %d, %d, %d, %d, %d);\n",
 					lcd.getName(),
 					lcd.getRsPin(),
 					lcd.getEnablePin(),
 					lcd.getD4Pin(),
 					lcd.getD5Pin(),
 					lcd.getD6Pin(),
-					lcd.getD7Pin()
+					lcd.getD7Pin(),
+					lcd.getD8Pin()
 			));
 			return;
 		}
@@ -114,29 +115,40 @@ public class ToWiring extends Visitor<StringBuffer> {
 
 	@Override
 	public void visit(LCDAction lcdAction) {
-		if (context.get("pass") == PASS.ONE) {
-			return;
-		}
+		if (context.get("pass") == PASS.ONE) return;
+
 		if (context.get("pass") == PASS.TWO) {
 
 			LCDScreen screen = lcdAction.getScreen();
 			String name = screen.getName();
-			w(String.format("\t\t\t%s.setCursor(0, 0);\n", name));
+
 			for (MessagePart part : lcdAction.getMessage()) {
+
 				if (part instanceof ConstantText) {
 					ConstantText t = (ConstantText) part;
-					w(String.format("\t\t\t%s.print(\"%s\");\n",
-							name, escape(t.getValue())));
+
+					w(String.format("\t\t\t%s.setCursor(0, 0);\n", name));
+					w(String.format("\t\t\t%s.print(\"                \");\n", name));
+					w(String.format("\t\t\t%s.setCursor(0, 0);\n", name));
+
+					w(String.format(
+							"\t\t\t%s.print(\"%s\");\n",
+							name, escape(t.getValue())
+					));
 				}
 
 				if (part instanceof BrickValueRef) {
 					BrickValueRef ref = (BrickValueRef) part;
 					Brick brick = ref.getBrick();
 
+					w(String.format("\t\t\t%s.setCursor(0, 1);\n", name));
+					w(String.format("\t\t\t%s.print(\"                \");\n", name));
+					w(String.format("\t\t\t%s.setCursor(0, 1);\n", name));
+
 					if (brick instanceof Sensor) {
 						Sensor s = (Sensor) brick;
 						w(String.format(
-								"\t\t\t%s.print((digitalRead(%d) == HIGH ? \"HIGH\" : \"LOW\"));\n",
+								"\t\t\t%s.print((digitalRead(%d) == HIGH ? \"HIGH\" : \"LOW \"));\n",
 								name, s.getPin()
 						));
 					}
@@ -144,7 +156,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 					if (brick instanceof Actuator) {
 						Actuator a = (Actuator) brick;
 						w(String.format(
-								"\t\t\t%s.print((digitalRead(%d) == HIGH ? \"ON\" : \"OFF\"));\n",
+								"\t\t\t%s.print((digitalRead(%d) == HIGH ? \"ON  \" : \"OFF \"));\n",
 								name, a.getPin()
 						));
 					}

@@ -48,12 +48,13 @@ public class AppBuilder {
         lcd.setName(name);
         lcd.setColumns(16);
         lcd.setRows(2);
-        lcd.setRsPin(2);
-        lcd.setEnablePin(4);
-        lcd.setD4Pin(5);
-        lcd.setD5Pin(6);
-        lcd.setD6Pin(7);
-        lcd.setD7Pin(8);
+        lcd.setRsPin(10);
+        lcd.setEnablePin(11);
+        lcd.setD4Pin(12);
+        lcd.setD5Pin(13);
+        lcd.setD6Pin(14);
+        lcd.setD7Pin(15);
+        lcd.setD8Pin(16);
         return lcd;
     }
 
