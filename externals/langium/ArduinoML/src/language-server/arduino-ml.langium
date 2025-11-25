@@ -12,8 +12,11 @@ entry App:
 		( states+=State)* 		
 	'}';
 
-Brick :
-	(Actuator | Sensor);
+Brick:
+      Actuator
+    | Sensor
+    | LCDBrick
+;
 
 Actuator:
 	{infer Actuator}
@@ -30,9 +33,28 @@ State :
 		transition=TransitionList
 	'}';
 
+LCDBrick:
+    {infer LCDBrick}
+    'LCD' name=ID;
 
-Action :
-	actuator=[Actuator:ID] '<=' value=Signal;
+Action:
+      actuator=[Actuator:ID] '<=' value=Signal
+    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage
+;
+
+LCDMessage:
+    parts+=LCDMessagePart ('+' parts+=LCDMessagePart)*;
+
+LCDMessagePart:
+      ConstantText
+    | BrickValueRef
+;
+
+ConstantText:
+    value=STRING;
+
+BrickValueRef:
+    brick=[Brick:ID];
 
 TransitionList:
 	(
