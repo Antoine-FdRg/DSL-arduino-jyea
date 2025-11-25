@@ -19,6 +19,8 @@ public abstract class Visitor<T> {
 	public abstract void visit(Actuator actuator);
 	public abstract void visit(Sensor sensor);
 
+	public abstract void visit(LCDScreen lcd);
+	public abstract void visit(LCDAction lcdAction);
 
 	/***********************
 	 ** Helper mechanisms **

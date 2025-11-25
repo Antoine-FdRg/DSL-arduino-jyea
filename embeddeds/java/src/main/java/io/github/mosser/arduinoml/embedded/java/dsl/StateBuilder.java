@@ -17,6 +17,10 @@ public class StateBuilder {
         return new InstructionBuilder(this, sensorName);
     }
 
+    public DisplayBuilder displayOn(String lcdName) {
+        return new DisplayBuilder(this, lcdName);
+    }
+
     public StateBuilder initial() { parent.theApp.setInitial(this.local); return this; }
 
     public AppBuilder endState() { parent.theApp.getStates().add(this.local); return parent; }
