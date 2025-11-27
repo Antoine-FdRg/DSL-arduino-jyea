@@ -18,9 +18,8 @@ public class TransitionTableBuilder {
         this.sensors = sensors;
     }
 
-    public TransitionBuilder from(String state) {
-        TransitionBuilder builder = new TransitionBuilder(this, state);
-        return builder;
+    public TransitionListBuilder from(String state) {
+        return new TransitionListBuilder(this, state);
     }
 
 

@@ -1,0 +1,30 @@
+app RedButton initial state ready {
+	bricks
+		Actuator red_led : 12
+        Actuator buzzer : 9
+		Sensor button : 8
+        
+	
+	states
+		ready {
+            red_led <= LOW
+            buzzer  <= LOW
+
+            button is HIGH => buzzing
+        }
+
+        buzzing {
+            red_led <= LOW
+            buzzer  <= HIGH
+
+            button is HIGH => led_on
+        }
+
+        led_on {
+            red_led <= HIGH
+            buzzer  <= LOW
+
+            button is HIGH => ready
+        }
+}
+

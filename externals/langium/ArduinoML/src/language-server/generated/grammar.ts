@@ -29,7 +29,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@15"
+                "$ref": "#/rules@17"
               },
               "arguments": []
             }
@@ -54,7 +54,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
               "terminal": {
                 "$type": "RuleCall",
                 "rule": {
-                  "$ref": "#/rules@15"
+                  "$ref": "#/rules@17"
                 },
                 "arguments": []
               },
@@ -188,7 +188,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@15"
+                "$ref": "#/rules@17"
               },
               "arguments": []
             }
@@ -204,7 +204,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@16"
+                "$ref": "#/rules@18"
               },
               "arguments": []
             }
@@ -242,7 +242,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@15"
+                "$ref": "#/rules@17"
               },
               "arguments": []
             }
@@ -258,7 +258,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@16"
+                "$ref": "#/rules@18"
               },
               "arguments": []
             }
@@ -285,7 +285,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@15"
+                "$ref": "#/rules@17"
               },
               "arguments": []
             }
@@ -362,7 +362,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
               "terminal": {
                 "$type": "RuleCall",
                 "rule": {
-                  "$ref": "#/rules@15"
+                  "$ref": "#/rules@17"
                 },
                 "arguments": []
               },
@@ -380,7 +380,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@8"
+                "$ref": "#/rules@10"
               },
               "arguments": []
             }
@@ -401,6 +401,35 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
         "$type": "Alternatives",
         "elements": [
           {
+            "$type": "RuleCall",
+            "rule": {
+              "$ref": "#/rules@7"
+            },
+            "arguments": []
+          },
+          {
+            "$type": "RuleCall",
+            "rule": {
+              "$ref": "#/rules@8"
+            },
+            "arguments": []
+          }
+        ]
+      },
+      "definesHiddenTokens": false,
+      "entry": false,
+      "fragment": false,
+      "hiddenTokens": [],
+      "parameters": [],
+      "wildcard": false
+    },
+    {
+      "$type": "ParserRule",
+      "name": "SignalTransitionList",
+      "definition": {
+        "$type": "Alternatives",
+        "elements": [
+          {
             "$type": "Group",
             "elements": [
               {
@@ -410,7 +439,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
                 "terminal": {
                   "$type": "RuleCall",
                   "rule": {
-                    "$ref": "#/rules@9"
+                    "$ref": "#/rules@11"
                   },
                   "arguments": []
                 }
@@ -426,7 +455,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
                 "terminal": {
                   "$type": "RuleCall",
                   "rule": {
-                    "$ref": "#/rules@7"
+                    "$ref": "#/rules@9"
                   },
                   "arguments": []
                 }
@@ -438,7 +467,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
                 "terminal": {
                   "$type": "RuleCall",
                   "rule": {
-                    "$ref": "#/rules@7"
+                    "$ref": "#/rules@9"
                   },
                   "arguments": []
                 },
@@ -447,6 +476,29 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
               {
                 "$type": "Keyword",
                 "value": "}"
+              },
+              {
+                "$type": "Keyword",
+                "value": "=>"
+              },
+              {
+                "$type": "Assignment",
+                "feature": "next",
+                "operator": "=",
+                "terminal": {
+                  "$type": "CrossReference",
+                  "type": {
+                    "$ref": "#/rules@4"
+                  },
+                  "terminal": {
+                    "$type": "RuleCall",
+                    "rule": {
+                      "$ref": "#/rules@17"
+                    },
+                    "arguments": []
+                  },
+                  "deprecatedSyntax": false
+                }
               }
             ]
           },
@@ -460,7 +512,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
                 "terminal": {
                   "$type": "RuleCall",
                   "rule": {
-                    "$ref": "#/rules@7"
+                    "$ref": "#/rules@9"
                   },
                   "arguments": []
                 }
@@ -481,7 +533,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
                   "terminal": {
                     "$type": "RuleCall",
                     "rule": {
-                      "$ref": "#/rules@15"
+                      "$ref": "#/rules@17"
                     },
                     "arguments": []
                   },
@@ -501,7 +553,65 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
     },
     {
       "$type": "ParserRule",
-      "name": "Transition",
+      "name": "TemporalTransitionList",
+      "definition": {
+        "$type": "Group",
+        "elements": [
+          {
+            "$type": "Keyword",
+            "value": "after"
+          },
+          {
+            "$type": "Assignment",
+            "feature": "delay",
+            "operator": "=",
+            "terminal": {
+              "$type": "RuleCall",
+              "rule": {
+                "$ref": "#/rules@18"
+              },
+              "arguments": []
+            }
+          },
+          {
+            "$type": "Keyword",
+            "value": "ms"
+          },
+          {
+            "$type": "Keyword",
+            "value": "=>"
+          },
+          {
+            "$type": "Assignment",
+            "feature": "next",
+            "operator": "=",
+            "terminal": {
+              "$type": "CrossReference",
+              "type": {
+                "$ref": "#/rules@4"
+              },
+              "terminal": {
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@17"
+                },
+                "arguments": []
+              },
+              "deprecatedSyntax": false
+            }
+          }
+        ]
+      },
+      "definesHiddenTokens": false,
+      "entry": false,
+      "fragment": false,
+      "hiddenTokens": [],
+      "parameters": [],
+      "wildcard": false
+    },
+    {
+      "$type": "ParserRule",
+      "name": "SignalTransition",
       "definition": {
         "$type": "Group",
         "elements": [
@@ -517,7 +627,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
               "terminal": {
                 "$type": "RuleCall",
                 "rule": {
-                  "$ref": "#/rules@15"
+                  "$ref": "#/rules@17"
                 },
                 "arguments": []
               },
@@ -535,7 +645,7 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             "terminal": {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@8"
+                "$ref": "#/rules@10"
               },
               "arguments": []
             }
@@ -562,14 +672,14 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@10"
+                "$ref": "#/rules@12"
               },
               "arguments": []
             },
             {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@11"
+                "$ref": "#/rules@13"
               },
               "arguments": []
             }
@@ -596,14 +706,14 @@ export const ArduinoMlGrammar = (): Grammar => loadedArduinoMlGrammar ?? (loaded
             {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@12"
+                "$ref": "#/rules@14"
               },
               "arguments": []
             },
             {
               "$type": "RuleCall",
               "rule": {
-                "$ref": "#/rules@13"
+                "$ref": "#/rules@15"
               },
               "arguments": []
             }
