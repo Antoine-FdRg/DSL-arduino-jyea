@@ -64,4 +64,16 @@ public class TransitionListBuilder {
     void addTransition(Transition t) {
         this.transitionList.add(t);
     }
+
+    public TransitionTableBuilder error(int errorCode) {
+        local.setTransitions(transitionList);
+        local.setNext(parent.getErrorState(errorCode));
+        if(transitionList.isEmpty()){
+            throw new IllegalStateException("No transitions defined for going to error state\nHow to fix  : Define at least one using when(<sensorName>)");
+        }
+        if(local.getConnector() == null && transitionList.size() > 1){
+            throw new IllegalStateException("Multiple transitions defined without a connector (AND/OR) for going to error state\nHow to fix  : define a connector using startAnd()/startOr()");
+        }
+        return parent;
+    }
 }
