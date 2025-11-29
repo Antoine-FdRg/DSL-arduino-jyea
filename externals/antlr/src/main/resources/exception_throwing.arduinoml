@@ -1,0 +1,12 @@
+application dualCheckAlarm
+
+sensor b1 : 9
+sensor b2 : 10
+
+-> off {
+    AND {
+        b1 is HIGH
+        b2 is HIGH
+    } => error 2
+}
+

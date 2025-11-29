@@ -12,21 +12,25 @@ declaration     :   'application' name=IDENTIFIER;
 bricks          :   (sensor|actuator)+;
     sensor      :   'sensor'   location ;
     actuator    :   'actuator' location ;
-    location    :   id=IDENTIFIER ':' port=PORT_NUMBER;
+    location    :   id=IDENTIFIER ':' port=INT;
 
 states          :   state+;
-    state       :   initial? name=IDENTIFIER '{'  action+ transition '}';
+    state       :   initial? name=IDENTIFIER '{'  action* transitionList '}';
     action      :   receiver=IDENTIFIER '<=' value=SIGNAL;
-    transition  :   trigger=IDENTIFIER 'is' value=SIGNAL '=>' next=IDENTIFIER ;
+
+    transitionList
+                :   ( (connector=CONNECTOR '{' transition+ '}' ) | transition ) '=>' (next=IDENTIFIER | 'error' errorCode=INT);
+    transition  :   trigger=IDENTIFIER 'is' value=SIGNAL ;
     initial     :   '->';
 
 /*****************
  ** Lexer rules **
  *****************/
 
-PORT_NUMBER     :   [1-9] | '11' | '12';
-IDENTIFIER      :   LOWERCASE (LOWERCASE|UPPERCASE)+;
 SIGNAL          :   'HIGH' | 'LOW';
+CONNECTOR       :   'AND' | 'OR';
+IDENTIFIER      :   LOWERCASE (LOWERCASE|UPPERCASE|NUMBER)+;
+INT             :   NUMBER+;
 
 /*************
  ** Helpers **
@@ -34,6 +38,7 @@ SIGNAL          :   'HIGH' | 'LOW';
 
 fragment LOWERCASE  : [a-z];                                 // abstract rule, does not really exists
 fragment UPPERCASE  : [A-Z];
+fragment NUMBER     : [0-9];
 NEWLINE             : ('\r'? '\n' | '\r')+      -> skip;
 WS                  : ((' ' | '\t')+)           -> skip;     // who cares about whitespaces?
 COMMENT             : '#' ~( '\r' | '\n' )*     -> skip;     // Single line comments, starting with a #
