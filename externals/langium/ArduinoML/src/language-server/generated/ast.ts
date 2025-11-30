@@ -122,7 +122,8 @@ export interface TransitionList extends AstNode {
     readonly $container: State;
     readonly $type: 'TransitionList';
     connector?: Logic
-    next: Reference<State>
+    errorCode?: number
+    next?: Reference<State>
     transitions: Array<Transition>
 }
 

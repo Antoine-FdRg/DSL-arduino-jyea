@@ -28,7 +28,6 @@ Sensor :
 	
 State :
 	name=ID '{'
-		actions+=Action
 		(actions+=Action)* 
 		transition=TransitionList
 	'}';
@@ -61,10 +60,10 @@ TransitionList:
 		connector=Logic '{'
 			(transitions+=Transition)
 			(transitions+=Transition)*
-		'}' '=>' next=[State:ID]
+		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
 	) | (
 		transitions+=Transition
-	) '=>' next=[State:ID];
+	) '=>' (next=[State:ID] | 'error' errorCode=INT);
 
 
 Transition:
