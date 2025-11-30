@@ -3,8 +3,10 @@ package io.github.mosser.arduinoml.embedded.java.dsl;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
 import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
+import io.github.mosser.arduinoml.kernel.structural.SerialSensor;
 
 import java.util.Map;
+import java.util.Optional;
 
 public class TransitionTableBuilder {
 
@@ -42,5 +44,8 @@ public class TransitionTableBuilder {
         return s;
     }
 
+    Optional<SerialSensor> findSerialSensor(String sensorName) {
+        return parent.findSerialSensor(sensorName);
+    }
 
 }
