@@ -50,17 +50,11 @@ public class Switch {
 		off2on.setSensor(button);
 		off2on.setValue(SIGNAL.HIGH);
 
-		TransitionList onTransitionList = new TransitionList();
-		onTransitionList.setTransitions(Arrays.asList(on2off));
-		onTransitionList.setNext(off);
+		on.setExpression(on2off);
+		on.setNext(off);
 
-		TransitionList offTransitionList = new TransitionList();
-		offTransitionList.setTransitions(Arrays.asList(off2on));
-		offTransitionList.setNext(on);
-
-		// Binding transitions to states
-		on.setTransitionList(onTransitionList);
-		off.setTransitionList(offTransitionList);
+		off.setExpression(off2on);
+		off.setNext(on);
 
 		// Building the App
 		App theSwitch = new App();
