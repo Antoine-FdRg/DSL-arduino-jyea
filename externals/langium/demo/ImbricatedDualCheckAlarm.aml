@@ -1,0 +1,29 @@
+app Demo initial state idle {
+    bricks
+        Sensor b1 : 9        // Button 1
+        Sensor b2 : 10 
+        Actuator led : 12   
+
+    states
+        idle {
+            led <= LOW
+
+            // se simplifie en : b1 HIGH AND b2 HIGH
+            AND {
+                b1 is HIGH
+                OR {
+                    b2 is HIGH
+                    b1 is LOW
+                }
+            } => active
+        }
+
+        active {
+            led <= HIGH
+
+            OR {
+                b1 is LOW
+                b2 is LOW
+            } => idle
+        }
+}

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { CompositeGeneratorNode, NL, toString } from 'langium';
 import path from 'path';
-import { Action, Actuator, App, Sensor, State, TransitionList } from '../language-server/generated/ast';
+import { Action, Actuator, App, Condition, Expression, LogicExpression, Sensor, State } from '../language-server/generated/ast';
 import { extractDestinationAndName } from './cli-util';
 
 export function generateInoFile(app: App, filePath: string, destination: string | undefined): string {
@@ -102,8 +102,8 @@ long `+brick.name+`LastDebounceTime = 0;
 		for(const action of state.actions){
 			compileAction(action, fileNode)
 		}
-		if (state.transition !== null){
-			compileTransition(state.transition, fileNode)
+		if (state.expression) {
+			compileStateTransition(state, fileNode);
 		}
 		fileNode.append(`
 				break;`)
@@ -115,38 +115,66 @@ long `+brick.name+`LastDebounceTime = 0;
 					digitalWrite(`+action.actuator.ref?.outputPin+`,`+action.value.value+`);`)
 	}
 
-function compileTransition(transition: TransitionList, fileNode: CompositeGeneratorNode) {
-	const transitions: any[] = (transition as any).transitions || [];
+	function compileExpression(expr: Expression): string {
 
-	const sensors = new Set<string>();
-	for (const t of transitions) {
-		const name = t.sensor?.ref?.name;
-		if (name) sensors.add(name);
+		if ('sensor' in expr) {
+			const cond = expr as Condition;
+			const pin = cond.sensor?.ref?.inputPin;
+			const name = cond.sensor?.ref?.name;
+			const val = cond.value?.value; 
+
+			return `(digitalRead(${pin}) == ${val} && ${name}BounceGuard)`;
+		}
+
+		if ('expressions' in expr) {
+			const logical = expr as LogicExpression;
+			const op = logical.logic.value === 'AND' ? ' && ' : ' || ';
+			const parts = logical.expressions.map(child => compileExpression(child));
+			return `( ${parts.join(op)} )`;
+		}
+
+		return 'false';
 	}
 
-	for (const s of Array.from(sensors)) {
+	function collectSensors(expr: Expression, sensors: Set<string>) {
+		if ('sensor' in expr) {
+			const cond = expr as Condition;
+			const name = cond.sensor?.ref?.name;
+			if (name) sensors.add(name);
+		}
+		if ('expressions' in expr) {
+			const logical = expr as LogicExpression;
+			logical.expressions.forEach(e => collectSensors(e, sensors));
+		}
+	}
+
+	function compileStateTransition(state: State, fileNode: CompositeGeneratorNode) {
+		const expr = state.expression;
+
+		const sensors = new Set<string>();
+		collectSensors(expr, sensors);
+
+		for (const s of sensors) {
+			fileNode.append(`
+				${s}BounceGuard = millis() - ${s}LastDebounceTime > debounce;`, NL);
+		}
+
+		const condition = compileExpression(expr);
+
+		const target = state.next?.ref?.name
+			?? (state.errorCode !== undefined ? `error_${state.errorCode}` : 'currentState');
+
 		fileNode.append(`
-			` + s + `BounceGuard = millis() - ` + s + `LastDebounceTime > debounce;`, NL)
+				if (${condition}) {
+					${
+						Array.from(sensors)
+							.map(s => `${s}LastDebounceTime = millis();`)
+							.join('\n\t\t\t\t')
+					}
+					currentState = ${target};
+				}
+			`);
 	}
-
-	const parts = transitions.map(t => {
-		const pin = t.sensor?.ref?.inputPin;
-		const name = t.sensor?.ref?.name;
-		const val = t.value?.value;
-		return `( digitalRead(${pin}) == ${val} && ${name}BounceGuard )`;
-	});
-
-	const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
-	const condition = parts.length > 1 ? `( ` + parts.join(op) + ` )` : (parts[0] || 'false');
-	const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
-
-	fileNode.append(`
-			if( ` + condition + ` ) {
-				` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t') + `
-					currentState = ` + (nextName ? nextName : 'currentState') + `;
-				}`)
-	}
-
 
 	function compileErrorLedActuatorCode(fileNode: CompositeGeneratorNode) {
 		if (isUsingErrorState(app)) {
@@ -156,11 +184,13 @@ function compileTransition(transition: TransitionList, fileNode: CompositeGenera
 	}
 
 	function isUsingErrorState(app: App): boolean {
-		return app.states.some(s => s.transition && (s.transition as any).errorCode !== undefined);
+    	return app.states.some(s => s.errorCode !== undefined);
 	}
 
 	function getErrorCodes(app: App): number[] {
-		return app.states.map(s => s.transition).filter(t => t && (t as any).errorCode !== undefined).map(t => (t as any).errorCode);
+		return app.states
+			.filter(s => s.errorCode !== undefined)
+			.map(s => s.errorCode!);
 	}
 
 	function generateErrorMethodCode(fileNode: CompositeGeneratorNode) {
