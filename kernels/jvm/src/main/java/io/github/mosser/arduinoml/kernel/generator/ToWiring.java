@@ -4,7 +4,9 @@ import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.*;
 import io.github.mosser.arduinoml.kernel.structural.*;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -144,55 +146,85 @@ public class ToWiring extends Visitor<StringBuffer> {
 				for (Action action : state.getActions()) {
 					action.accept(this);
 				}
-			}
-      state.getTransitionList().accept(this);
-			w("\t\t\tbreak;\n");
-        }
 
+				if (state.getExpression() != null && state.getNext() != null) {
+					generateTransitionCode(state);
+				}
+			}
+			w("\t\t\tbreak;\n");
+		}
+	}
+
+	private void generateTransitionCode(State state) {
+		Expression expr = state.getExpression();
+		Set<Sensor> sensors = new HashSet<>();
+		collectSensors(expr, sensors);
+
+		for (Sensor s : sensors) {
+			String name = s.getName();
+			w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
+					name, name));
+		}
+
+		String condition = buildCondition(expr);
+		w(String.format("\t\t\tif( %s ) {\n", condition));
+
+		for (Sensor s : sensors) {
+			String name = s.getName();
+			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", name));
+		}
+
+		w("\t\t\t\tcurrentState = " + state.getNext().getName() + ";\n");
+		w("\t\t\t}\n");
+	}
+
+	private void collectSensors(Expression expr, Set<Sensor> sensors) {
+		if (expr instanceof SignalTransition) {
+			SignalTransition st = (SignalTransition) expr;
+			if (st.getSensor() != null) {
+				sensors.add(st.getSensor());
+			}
+		} else if (expr instanceof LogicalExpression) {
+			LogicalExpression le = (LogicalExpression) expr;
+			for (Expression child : le.getExpressions()) {
+				collectSensors(child, sensors);
+			}
+		}
+	}
+
+	private String buildCondition(Expression expr) {
+		if (expr instanceof SignalTransition) {
+			SignalTransition st = (SignalTransition) expr;
+			Sensor sensor = st.getSensor();
+			String name = sensor.getName();
+			int pin = sensor.getPin();
+			String val = st.getValue().toString();
+
+			return String.format("(digitalRead(%d) == %s && %sBounceGuard)",
+					pin, val, name);
+		} else if (expr instanceof LogicalExpression) {
+			LogicalExpression le = (LogicalExpression) expr;
+			String op = (le.getOperator() == LOGIC.OR) ? " || " : " && ";
+
+			List<String> parts = le.getExpressions().stream()
+					.map(this::buildCondition)
+					.collect(Collectors.toList());
+
+			if (parts.size() == 1) {
+				return parts.get(0);
+			}
+			return "(" + String.join(op, parts) + ")";
+		}
+		return "false";
 	}
 
 	@Override
 	public void visit(SignalTransition transition) {
-		if(context.get("pass") == PASS.ONE) {
-			return;
-		}
-		if(context.get("pass") == PASS.TWO) {
-			String sensorName = transition.getSensor().getName();
-			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
-		}
 	}
 
-    @Override
-    public void visit(TransitionList transitionList) {
-		if(transitionList.getTransitions().isEmpty()){
-			return;
-		}
-        List<String> sensorsName = transitionList.getTransitions().stream()
-                .filter(SignalTransition.class::isInstance).map(
-                        t -> ((SignalTransition) t).getSensor().getName()
-                ).collect(Collectors.toList());
-        for (String name : sensorsName) {
-            w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
-                    name, name));
-        }
-
-        List<String> parts = transitionList.getTransitions().stream()
-                .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
-                        ((SignalTransition) t).getSensor().getPin(),
-                        ((SignalTransition) t).getValue(),
-                        ((SignalTransition) t).getSensor().getName()))
-                .collect(Collectors.toList());
-
-        String connector = transitionList.getConnector() == LOGIC.OR ? " || " : " && ";
-        String condition = parts.size() > 1 ? "(" + String.join(connector, parts) + ")" : parts.get(0);
-        w(String.format("\t\t\tif( %s ) {\n", condition));
-        for (Transition transition : transitionList.getTransitions()) {
-            transition.accept(this);
-        }
-        w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
-		w("\t\t\t}\n");
-    }
-
+	@Override
+	public void visit(LogicalExpression logicalExpression) {
+	}
 
 	@Override
 	public void visit(Action action) {

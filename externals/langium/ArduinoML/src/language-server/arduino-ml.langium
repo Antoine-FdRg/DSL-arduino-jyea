@@ -22,30 +22,32 @@ Actuator:
 Sensor :
 	{infer Sensor}
 	'Sensor'  name=ID ':' inputPin=INT;
-	
-State :
-	name=ID '{'
-		(actions+=Action)* 
-		transition=TransitionList
-	'}';
 
+State:
+    name=ID '{'
+        (actions+=Action)*
+        expression=Expression
+        '=>' (next=[State:ID] | 'error' errorCode=INT)
+    '}';
+
+Expression:
+      LogicExpression
+    | Condition
+;
+
+LogicExpression:
+      logic=Logic '{'
+          expressions+=Expression
+          (expressions+=Expression)*
+      '}'
+;
+
+Condition:
+      sensor=[Sensor:ID] 'is' value=Signal
+;
 
 Action :
 	actuator=[Actuator:ID] '<=' value=Signal;
-
-TransitionList:
-	(
-		connector=Logic '{'
-			(transitions+=Transition)
-			(transitions+=Transition)*
-		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
-	) | (
-		transitions+=Transition
-	) '=>' (next=[State:ID] | 'error' errorCode=INT);
-
-
-Transition:
-	sensor=[Sensor:ID] 'is' value=Signal;
 
 Signal:
 	value=(HIGH | LOW);
