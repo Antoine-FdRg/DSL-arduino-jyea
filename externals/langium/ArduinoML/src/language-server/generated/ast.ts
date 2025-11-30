@@ -6,6 +6,14 @@
 /* eslint-disable */
 import { AstNode, AbstractAstReflection, Reference, ReferenceInfo, TypeMetaData } from 'langium';
 
+export type Action = SendAction | SetAction;
+
+export const Action = 'Action';
+
+export function isAction(item: unknown): item is Action {
+    return reflection.isInstance(item, Action);
+}
+
 export type Brick = Actuator | Sensor;
 
 export const Brick = 'Brick';
@@ -14,17 +22,20 @@ export function isBrick(item: unknown): item is Brick {
     return reflection.isInstance(item, Brick);
 }
 
-export interface Action extends AstNode {
-    readonly $container: State;
-    readonly $type: 'Action';
-    actuator: Reference<Actuator>
-    value: Signal
+export type Sensor = DigitalSensor | SerialSensor;
+
+export const Sensor = 'Sensor';
+
+export function isSensor(item: unknown): item is Sensor {
+    return reflection.isInstance(item, Sensor);
 }
 
-export const Action = 'Action';
+export type Transition = DigitalTransition | SerialTransition;
 
-export function isAction(item: unknown): item is Action {
-    return reflection.isInstance(item, Action);
+export const Transition = 'Transition';
+
+export function isTransition(item: unknown): item is Transition {
+    return reflection.isInstance(item, Transition);
 }
 
 export interface Actuator extends AstNode {
@@ -54,6 +65,32 @@ export function isApp(item: unknown): item is App {
     return reflection.isInstance(item, App);
 }
 
+export interface DigitalSensor extends AstNode {
+    readonly $container: App;
+    readonly $type: 'DigitalSensor';
+    inputPin: number
+    name: string
+}
+
+export const DigitalSensor = 'DigitalSensor';
+
+export function isDigitalSensor(item: unknown): item is DigitalSensor {
+    return reflection.isInstance(item, DigitalSensor);
+}
+
+export interface DigitalTransition extends AstNode {
+    readonly $container: TransitionList;
+    readonly $type: 'DigitalTransition';
+    sensor: Reference<DigitalSensor>
+    value: Signal
+}
+
+export const DigitalTransition = 'DigitalTransition';
+
+export function isDigitalTransition(item: unknown): item is DigitalTransition {
+    return reflection.isInstance(item, DigitalTransition);
+}
+
 export interface Logic extends AstNode {
     readonly $container: TransitionList;
     readonly $type: 'Logic';
@@ -66,21 +103,59 @@ export function isLogic(item: unknown): item is Logic {
     return reflection.isInstance(item, Logic);
 }
 
-export interface Sensor extends AstNode {
+export interface SendAction extends AstNode {
+    readonly $container: State;
+    readonly $type: 'SendAction';
+    message: string
+}
+
+export const SendAction = 'SendAction';
+
+export function isSendAction(item: unknown): item is SendAction {
+    return reflection.isInstance(item, SendAction);
+}
+
+export interface SerialSensor extends AstNode {
     readonly $container: App;
-    readonly $type: 'Sensor';
-    inputPin: number
+    readonly $type: 'SerialSensor';
     name: string
 }
 
-export const Sensor = 'Sensor';
+export const SerialSensor = 'SerialSensor';
 
-export function isSensor(item: unknown): item is Sensor {
-    return reflection.isInstance(item, Sensor);
+export function isSerialSensor(item: unknown): item is SerialSensor {
+    return reflection.isInstance(item, SerialSensor);
+}
+
+export interface SerialTransition extends AstNode {
+    readonly $container: TransitionList;
+    readonly $type: 'SerialTransition';
+    any: boolean
+    pattern?: string
+    sensor: Reference<SerialSensor>
+}
+
+export const SerialTransition = 'SerialTransition';
+
+export function isSerialTransition(item: unknown): item is SerialTransition {
+    return reflection.isInstance(item, SerialTransition);
+}
+
+export interface SetAction extends AstNode {
+    readonly $container: State;
+    readonly $type: 'SetAction';
+    actuator: Reference<Actuator>
+    value: Signal
+}
+
+export const SetAction = 'SetAction';
+
+export function isSetAction(item: unknown): item is SetAction {
+    return reflection.isInstance(item, SetAction);
 }
 
 export interface Signal extends AstNode {
-    readonly $container: Action | Transition;
+    readonly $container: DigitalTransition | SetAction;
     readonly $type: 'Signal';
     value: string
 }
@@ -105,19 +180,6 @@ export function isState(item: unknown): item is State {
     return reflection.isInstance(item, State);
 }
 
-export interface Transition extends AstNode {
-    readonly $container: TransitionList;
-    readonly $type: 'Transition';
-    sensor: Reference<Sensor>
-    value: Signal
-}
-
-export const Transition = 'Transition';
-
-export function isTransition(item: unknown): item is Transition {
-    return reflection.isInstance(item, Transition);
-}
-
 export interface TransitionList extends AstNode {
     readonly $container: State;
     readonly $type: 'TransitionList';
@@ -137,8 +199,14 @@ export interface ArduinoMlAstType {
     Actuator: Actuator
     App: App
     Brick: Brick
+    DigitalSensor: DigitalSensor
+    DigitalTransition: DigitalTransition
     Logic: Logic
+    SendAction: SendAction
     Sensor: Sensor
+    SerialSensor: SerialSensor
+    SerialTransition: SerialTransition
+    SetAction: SetAction
     Signal: Signal
     State: State
     Transition: Transition
@@ -148,7 +216,7 @@ export interface ArduinoMlAstType {
 export class ArduinoMlAstReflection extends AbstractAstReflection {
 
     getAllTypes(): string[] {
-        return ['Action', 'Actuator', 'App', 'Brick', 'Logic', 'Sensor', 'Signal', 'State', 'Transition', 'TransitionList'];
+        return ['Action', 'Actuator', 'App', 'Brick', 'DigitalSensor', 'DigitalTransition', 'Logic', 'SendAction', 'Sensor', 'SerialSensor', 'SerialTransition', 'SetAction', 'Signal', 'State', 'Transition', 'TransitionList'];
     }
 
     protected override computeIsSubtype(subtype: string, supertype: string): boolean {
@@ -156,6 +224,18 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
             case Actuator:
             case Sensor: {
                 return this.isSubtype(Brick, supertype);
+            }
+            case DigitalSensor:
+            case SerialSensor: {
+                return this.isSubtype(Sensor, supertype);
+            }
+            case DigitalTransition:
+            case SerialTransition: {
+                return this.isSubtype(Transition, supertype);
+            }
+            case SendAction:
+            case SetAction: {
+                return this.isSubtype(Action, supertype);
             }
             default: {
                 return false;
@@ -166,15 +246,18 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
     getReferenceType(refInfo: ReferenceInfo): string {
         const referenceId = `${refInfo.container.$type}:${refInfo.property}`;
         switch (referenceId) {
-            case 'Action:actuator': {
-                return Actuator;
-            }
             case 'App:initial':
             case 'TransitionList:next': {
                 return State;
             }
-            case 'Transition:sensor': {
-                return Sensor;
+            case 'DigitalTransition:sensor': {
+                return DigitalSensor;
+            }
+            case 'SerialTransition:sensor': {
+                return SerialSensor;
+            }
+            case 'SetAction:actuator': {
+                return Actuator;
             }
             default: {
                 throw new Error(`${referenceId} is not a valid reference id.`);
@@ -190,6 +273,14 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
                     mandatory: [
                         { name: 'bricks', type: 'array' },
                         { name: 'states', type: 'array' }
+                    ]
+                };
+            }
+            case 'SerialTransition': {
+                return {
+                    name: 'SerialTransition',
+                    mandatory: [
+                        { name: 'any', type: 'boolean' }
                     ]
                 };
             }

@@ -1,21 +1,17 @@
 grammar ArduinoMl
 
 entry App:
-    'app' name=ID
-    (serial=SerialConfig)?
+    'app' name=ID 
     'initial' 'state' initial=[State:ID]
     '{'
        'bricks'
        bricks+=Brick
-       (bricks+=Brick)*
-
+       (bricks+=Brick)* 
+       
        'states'
        states+=State
        ( states+=State)*
     '}';
-
-SerialConfig:
-    'serial' baudRate=INT;
 
 Brick :
     (Actuator | Sensor);
@@ -34,11 +30,11 @@ DigitalSensor:
 SerialSensor:
     {infer SerialSensor}
     'SerialSensor' name=ID;
-
+    
 State :
     name=ID '{'
        actions+=Action
-       (actions+=Action)*
+       (actions+=Action)* 
        transition=TransitionList
     '}';
 
@@ -72,7 +68,7 @@ SerialTransition:
 
 Signal:
     value=(HIGH | LOW);
-
+    
 Logic:
     value=(AND | OR);
 
