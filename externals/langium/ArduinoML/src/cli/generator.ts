@@ -29,9 +29,23 @@ export function generateInoFile(
   return generatedFilePath;
 }
 
-function compile(app: App, fileNode: CompositeGeneratorNode) {
-  fileNode.append(
-    `
+
+function compile(app:App, fileNode:CompositeGeneratorNode){
+    for (const brick of app.bricks) {
+		if (brick.$type === "LCDBrick") {
+			(brick as any).rs = 10;
+			(brick as any).enable = 11;
+			(brick as any).d4 = 12;
+			(brick as any).d5 = 13;
+			(brick as any).d6 = 14;
+			(brick as any).d7 = 15;
+			(brick as any).d8 = 16;
+			(brick as any).columns = 16;
+			(brick as any).rows = 2;
+		}
+    }
+    fileNode.append(
+	`
 //Wiring code generated from an ArduinoML model
 // Application name: ` +
       app.name +
@@ -58,6 +72,25 @@ STATE currentState = ` +
     NL
   );
 
+  const lcdBrick = app.bricks.find(b => b.$type === "LCDBrick");
+
+  let lcdName: string | undefined = undefined;
+  let columns = 16;
+  let rows = 2;
+
+  if (lcdBrick) {
+      lcdName = lcdBrick.name;
+      columns = (lcdBrick as any).columns ?? 16;
+      rows = (lcdBrick as any).rows ?? 2;
+  }
+
+	if (app.bricks.some(b => "rs" in b)) {
+		fileNode.append(`#include <LiquidCrystal.h>
+	LiquidCrystal ${lcdName}(10, 11, 12, 13, 14, 15, 16);
+
+	`);
+	}
+
   for (const brick of app.bricks) {
     if ("inputPin" in brick) {
       fileNode.append(
@@ -76,14 +109,22 @@ long ` +
   }
   fileNode.append(`
 	void setup(){`);
-  for (const brick of app.bricks) {
-    if ("inputPin" in brick) {
-      compileSensor(brick, fileNode);
-    } else {
-      compileActuator(brick, fileNode);
-    }
-  }
+	for (const brick of app.bricks) {
 
+		if ("inputPin" in brick) {
+			compileSensor(brick, fileNode);
+
+		} else if ("outputPin" in brick) {
+			compileActuator(brick, fileNode);
+
+		} else if ("rs" in brick) {
+		}
+	}
+
+	if (app.bricks.some(b => "rs" in b)) {
+    	fileNode.append(`
+        	${lcdName}.begin(${columns}, ${rows});`);
+	}
 		compileErrorLedActuatorCode(fileNode);
 
     fileNode.append(`
@@ -141,32 +182,74 @@ function compileSensor(sensor: Sensor, fileNode: CompositeGeneratorNode) {
   );
 }
 
-function compileState(state: State, fileNode: CompositeGeneratorNode) {
-  fileNode.append(
-    `
-				case ` +
-      state.name +
-      `:`
-  );
-  for (const action of state.actions) {
-    compileAction(action, fileNode);
-  }
-  if (state.transition !== null) {
-    compileTransition(state.transition, fileNode);
-  }
-  fileNode.append(`
-				break;`);
-}
+    function compileState(state: State, fileNode: CompositeGeneratorNode) {
+        fileNode.append(`
+				case `+state.name+`:`)
+		for(const action of state.actions){
+			compileAction(action, fileNode)
+		}
+		if (state.transition !== null){
+			compileTransition(state.transition, fileNode)
+		}
+		fileNode.append(`
+				break;`)
+    }
+	
 
 function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
-  fileNode.append(
-    `
-					digitalWrite(` +
-      action.actuator.ref?.outputPin +
-      `,` +
-      action.value.value +
-      `);`
-  );
+    if (action.lcd) { 
+        compileLCDAction(action, fileNode);
+        return;
+    }
+    if (action.actuator && action.value) { 
+        fileNode.append(`
+                        digitalWrite(${action.actuator.ref?.outputPin}, ${action.value.value});`);
+    }
+}
+
+function compileLCDAction(action: Action, fileNode: CompositeGeneratorNode) {
+    if (!action.lcdMessage) return;
+
+    const lcdName = action.lcd?.ref?.name ?? "lcd";
+
+    fileNode.append(`
+                        ${lcdName}.setCursor(0, 0);
+                        ${lcdName}.print("                ");  // clear line 0
+                        ${lcdName}.setCursor(0, 1);
+                        ${lcdName}.print("                ");  // clear line 1
+    `);
+
+    for (const part of action.lcdMessage.parts) {
+        if (part.$type === "ConstantText") {
+            fileNode.append(`
+                        ${lcdName}.setCursor(0, 0);
+                        ${lcdName}.print("${part.value}");
+            `);
+        }
+    }
+
+    for (const part of action.lcdMessage.parts) {
+        if (part.$type === "BrickValueRef") {
+
+            const brick = part.brick?.ref;
+            if (!brick) continue;
+
+            fileNode.append(`
+                        ${lcdName}.setCursor(0, 1);
+            `);
+
+            if ("inputPin" in brick) {
+                fileNode.append(`
+                        ${lcdName}.print((digitalRead(${brick.inputPin}) == HIGH ? "HIGH" : "LOW "));
+                `);
+            }
+            else if ("outputPin" in brick) {
+                fileNode.append(`
+                        ${lcdName}.print((digitalRead(${brick.outputPin}) == HIGH ? "ON  " : "OFF "));
+                `);
+            }
+        }
+    }
 }
 
 function compileTransition(
