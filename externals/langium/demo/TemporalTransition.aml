@@ -1,0 +1,15 @@
+app TemporalTransitionDemo initial state off {
+	bricks
+		Sensor b1 : 9
+		Actuator led1 : 12
+	
+	states
+		off {
+			led1 <= LOW
+			b1 is HIGH => on
+		}
+		on {
+			led1 <= HIGH
+			after 800 ms => off 
+		}
+}

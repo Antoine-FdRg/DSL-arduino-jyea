@@ -56,17 +56,22 @@ BrickValueRef:
     brick=[Brick:ID];
 
 TransitionList:
+	SignalTransitionList | TemporalTransitionList;
+
+SignalTransitionList:
 	(
 		connector=Logic '{'
-			(transitions+=Transition)
-			(transitions+=Transition)*
+			(transitions+=SignalTransition)
+			(transitions+=SignalTransition)*
 		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
 	) | (
-		transitions+=Transition
+		transitions+=SignalTransition
 	) '=>' (next=[State:ID] | 'error' errorCode=INT);
 
+TemporalTransitionList:
+	'after' delay=INT 'ms' '=>' next=[State:ID];
 
-Transition:
+SignalTransition:
 	sensor=[Sensor:ID] 'is' value=Signal;
 
 Signal:

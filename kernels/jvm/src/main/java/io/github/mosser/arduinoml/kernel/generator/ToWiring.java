@@ -34,6 +34,8 @@ public class ToWiring extends Visitor<StringBuffer> {
 		w(String.format("// Application name: %s\n", app.getName())+"\n");
 
 		w("long debounce = 200;\n");
+		w("long stateEnteredTime = 0;\n");
+		w("int lastState = -1;\n");
 		w("\nenum STATE {");
 		String sep ="";
 		for(State state: app.getStates()){
@@ -61,8 +63,12 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		w("}\n");
 
-		w("\nvoid loop() {\n" +
-			"\tswitch(currentState){\n");
+		w("\nvoid loop() {\n");
+		w("\tif((int)currentState != lastState) {\n");
+		w("\t\tstateEnteredTime = millis();\n");
+		w("\t\tlastState = (int)currentState;\n");
+		w("\t}\n");
+		w("\tswitch(currentState){\n");
 		for(State state: app.getStates()){
 			state.accept(this);
 		}
@@ -125,9 +131,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 		if(context.get("pass") == PASS.ONE) {
 			w(String.format("\nboolean %sBounceGuard = false;\n", sensor.getName()));
 			w(String.format("long %sLastDebounceTime = 0;\n", sensor.getName()));
-			return;
-		}
-		if(context.get("pass") == PASS.TWO) {
+		} else if(context.get("pass") == PASS.TWO) {
 			w(String.format("  pinMode(%d, INPUT);  // %s [Sensor]\n", sensor.getPin(), sensor.getName()));
 			return;
 		}
@@ -235,39 +239,63 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		if(context.get("pass") == PASS.TWO) {
 			String sensorName = transition.getSensor().getName();
-			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
+			w(String.format("\t\t\t\t%sLastDebounceTime = millis();%n", sensorName));
 		}
 	}
+    @Override
+    public void visit(TimeTransition transition) {
+        // TimeTransition handling will be managed in TransitionList visitor
+    }
 
     @Override
     public void visit(TransitionList transitionList) {
 		if(transitionList.getTransitions().isEmpty()){
 			return;
 		}
-        List<String> sensorsName = transitionList.getTransitions().stream()
-                .filter(SignalTransition.class::isInstance).map(
-                        t -> ((SignalTransition) t).getSensor().getName()
+        List<SignalTransition> signalTransitions = transitionList.getTransitions().stream()
+                .filter(SignalTransition.class::isInstance)
+                .map(SignalTransition.class::cast)
+                .collect(Collectors.toList());
+
+        List<TimeTransition> temporalTransitions = transitionList.getTransitions().stream()
+                .filter(TimeTransition.class::isInstance)
+                .map(TimeTransition.class::cast)
+                .collect(Collectors.toList());
+
+
+        List<String> sensorsName = signalTransitions.stream()
+                .map(
+                        t -> t.getSensor().getName()
                 ).collect(Collectors.toList());
         for (String name : sensorsName) {
             w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
                     name, name));
         }
 
-        List<String> parts = transitionList.getTransitions().stream()
+        List<String> parts = signalTransitions.stream()
                 .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
-                        ((SignalTransition) t).getSensor().getPin(),
-                        ((SignalTransition) t).getValue(),
-                        ((SignalTransition) t).getSensor().getName()))
+                        t.getSensor().getPin(),
+                        t.getValue(),
+                        t.getSensor().getName()))
                 .collect(Collectors.toList());
 
         String connector = transitionList.getConnector() == LOGIC.OR ? " || " : " && ";
         String condition = parts.size() > 1 ? "(" + String.join(connector, parts) + ")" : parts.get(0);
         w(String.format("\t\t\tif( %s ) {\n", condition));
-        for (Transition transition : transitionList.getTransitions()) {
+        for (SignalTransition transition : signalTransitions) {
             transition.accept(this);
         }
         w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
 		w("\t\t\t}\n");
+        // Handle temporal transitions
+        if (!temporalTransitions.isEmpty()) {
+            for (TimeTransition tempTransition : temporalTransitions) {
+                int delay = tempTransition.getDelay();
+                w(String.format("\t\t\tif( millis() - stateEnteredTime > %d ) {%n", delay));
+                w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
+                w("\t\t\t}\n");
+            }
+        }
     }
 
 
@@ -278,7 +306,6 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		if(context.get("pass") == PASS.TWO) {
 			w(String.format("\t\t\tdigitalWrite(%d,%s);\n",action.getActuator().getPin(),action.getValue()));
-			return;
 		}
 	}
 
