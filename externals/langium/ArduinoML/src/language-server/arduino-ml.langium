@@ -25,7 +25,6 @@ Sensor :
 	
 State :
 	name=ID '{'
-		actions+=Action
 		(actions+=Action)* 
 		transition=TransitionList
 	'}';
@@ -42,10 +41,10 @@ SignalTransitionList:
 		connector=Logic '{'
 			(transitions+=SignalTransition)
 			(transitions+=SignalTransition)*
-		'}' '=>' next=[State:ID]
+		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
 	) | (
 		transitions+=SignalTransition
-	) '=>' next=[State:ID];
+	) '=>' (next=[State:ID] | 'error' errorCode=INT);
 
 TemporalTransitionList:
 	'after' delay=INT 'ms' '=>' next=[State:ID];

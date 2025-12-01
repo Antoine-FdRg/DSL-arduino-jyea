@@ -54,6 +54,9 @@ public class ToWiring extends Visitor<StringBuffer> {
 		for(Brick brick: app.getBricks()){
 			brick.accept(this);
 		}
+		if (app.isUsingErrorState()) {
+			w("  pinMode(12, OUTPUT); // Onboard LED for error blinking\n");
+		}
 		w("}\n");
 
 		w("\nvoid loop() {\n");
@@ -67,12 +70,54 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		w("\t}\n" +
 			"}");
+		generateErrorBlink(app.isUsingErrorState());
+	}
+
+	private void generateErrorBlink(boolean useErrorState) {
+		if (!useErrorState) {
+			return;
+		}
+		w("\n\n" +
+				"long blinkDuration = 200 ;\n" +
+				"long pauseDuration = 900;\n" +
+				"long currentBlinkNumber = 0;\n" +
+				"boolean currentBlinkState = false;\n" +
+				"boolean pauseBlink = false;\n" +
+				"long currentBlinkDuration = 0;\n" +
+				"\n" +
+				"void errorBlink(long errorCode){\n" +
+				"  if(pauseBlink){\n" +
+				"    if(millis() - currentBlinkDuration > pauseDuration){\n" +
+				"      pauseBlink = false;\n" +
+				"    }\n" +
+				"    return;\n" +
+				"  }\n" +
+				"  if(millis() - currentBlinkDuration > blinkDuration){\n" +
+				"      currentBlinkDuration = millis();\n" +
+				"      if(currentBlinkState){\n" +
+				"        digitalWrite(12,LOW);\n" +
+				"        currentBlinkNumber++;      \n" +
+				"        if(currentBlinkNumber == errorCode){\n" +
+				"          currentBlinkNumber = 0;\n" +
+				"          pauseBlink = true;\n" +
+				"          currentBlinkDuration = millis();\n" +
+				"        }\n" +
+				"      }else{\n" +
+				"        digitalWrite(12,HIGH);\n" +
+				"      }\n" +
+				"      currentBlinkState = !currentBlinkState;\n" +
+				"  }\n" +
+				"}");
 	}
 
 	@Override
 	public void visit(Actuator actuator) {
+		if(context.get("pass") == PASS.ONE) {
+			return;
+		}
 		if(context.get("pass") == PASS.TWO) {
 			w(String.format("  pinMode(%d, OUTPUT); // %s [Actuator]\n", actuator.getPin(), actuator.getName()));
+			return;
 		}
 	}
 
@@ -84,6 +129,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 			w(String.format("long %sLastDebounceTime = 0;\n", sensor.getName()));
 		} else if(context.get("pass") == PASS.TWO) {
 			w(String.format("  pinMode(%d, INPUT);  // %s [Sensor]\n", sensor.getPin(), sensor.getName()));
+			return;
 		}
 	}
 
@@ -95,31 +141,40 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 		if(context.get("pass") == PASS.TWO) {
 			w("\t\tcase " + state.getName() + ":\n");
-			for (Action action : state.getActions()) {
-				action.accept(this);
-			}
 
-            state.getTransitionList().accept(this);
+			if(state.getName().startsWith("error_")){
+				w(String.format("\t\t\terrorBlink(%s);\n",state.getName().substring(6)));
+			} else {
+				for (Action action : state.getActions()) {
+					action.accept(this);
+				}
+			}
+      state.getTransitionList().accept(this);
+			w("\t\t\tbreak;\n");
         }
 
 	}
 
 	@Override
 	public void visit(SignalTransition transition) {
+		if(context.get("pass") == PASS.ONE) {
+			return;
+		}
 		if(context.get("pass") == PASS.TWO) {
 			String sensorName = transition.getSensor().getName();
 			w(String.format("\t\t\t\t%sLastDebounceTime = millis();%n", sensorName));
 		}
 	}
-
-	@Override
-	public void visit(TimeTransition transition) {
-		// TimeTransition handling will be managed in TransitionList visitor
-	}
+    @Override
+    public void visit(TimeTransition transition) {
+        // TimeTransition handling will be managed in TransitionList visitor
+    }
 
     @Override
     public void visit(TransitionList transitionList) {
-        // Separate signal transitions from temporal transitions
+		if(transitionList.getTransitions().isEmpty()){
+			return;
+		}
         List<SignalTransition> signalTransitions = transitionList.getTransitions().stream()
                 .filter(SignalTransition.class::isInstance)
                 .map(SignalTransition.class::cast)
@@ -130,33 +185,31 @@ public class ToWiring extends Visitor<StringBuffer> {
                 .map(TimeTransition.class::cast)
                 .collect(Collectors.toList());
 
-        // Handle signal-based transitions
-        if (!signalTransitions.isEmpty()) {
-            List<String> sensorsName = signalTransitions.stream()
-                    .map(t -> t.getSensor().getName())
-                    .collect(Collectors.toList());
-            for (String name : sensorsName) {
-                w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;%n",
-                        name, name));
-            }
 
-            List<String> parts = signalTransitions.stream()
-                    .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
-                            t.getSensor().getPin(),
-                            t.getValue(),
-                            t.getSensor().getName()))
-                    .collect(Collectors.toList());
-
-            String connector = transitionList.getConnector() == LOGIC.OR ? " || " : " && ";
-            String condition = parts.size() > 1 ? "(" + String.join(connector, parts) + ")" : parts.get(0);
-            w(String.format("\t\t\tif( %s ) {%n", condition));
-            for (SignalTransition transition : signalTransitions) {
-                transition.accept(this);
-            }
-            w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
-            w("\t\t\t}\n");
+        List<String> sensorsName = signalTransitions.stream()
+                .map(
+                        t -> t.getSensor().getName()
+                ).collect(Collectors.toList());
+        for (String name : sensorsName) {
+            w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
+                    name, name));
         }
 
+        List<String> parts = signalTransitions.stream()
+                .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
+                        t.getSensor().getPin(),
+                        t.getValue(),
+                        t.getSensor().getName()))
+                .collect(Collectors.toList());
+
+        String connector = transitionList.getConnector() == LOGIC.OR ? " || " : " && ";
+        String condition = parts.size() > 1 ? "(" + String.join(connector, parts) + ")" : parts.get(0);
+        w(String.format("\t\t\tif( %s ) {\n", condition));
+        for (SignalTransition transition : signalTransitions) {
+            transition.accept(this);
+        }
+        w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
+		w("\t\t\t}\n");
         // Handle temporal transitions
         if (!temporalTransitions.isEmpty()) {
             for (TimeTransition tempTransition : temporalTransitions) {
@@ -166,13 +219,14 @@ public class ToWiring extends Visitor<StringBuffer> {
                 w("\t\t\t}\n");
             }
         }
-
-        w("\t\t\tbreak;\n");
     }
 
 
 	@Override
 	public void visit(Action action) {
+		if(context.get("pass") == PASS.ONE) {
+			return;
+		}
 		if(context.get("pass") == PASS.TWO) {
 			w(String.format("\t\t\tdigitalWrite(%d,%s);\n",action.getActuator().getPin(),action.getValue()));
 		}
