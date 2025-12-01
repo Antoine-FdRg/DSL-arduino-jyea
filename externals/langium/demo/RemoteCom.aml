@@ -1,7 +1,7 @@
 app RemoteComApp initial state bootstrap {
 
     bricks
-    Actuator led: 13
+    Actuator led: 12
     SerialSensor keyboard
 
     states

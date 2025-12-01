@@ -10,7 +10,7 @@ public class RemoteCommunicationDemo {
     public static void main(String[] args) {
 
         App myApp =
-            application("serial_control")
+            application("RemoteCommunicationApp")
                 .uses(serialSensor("keyboard"))
                 .uses(actuator("led", 12))
                 .hasForState("off").initial()

@@ -25,11 +25,12 @@ function compile(app: App, fileNode: CompositeGeneratorNode) {
 
 	fileNode.append(
 		`
-//Wiring code generated from an ArduinoML model
+// Wiring code generated from an ArduinoML model
 // Application name: `+ app.name + `
 ` + (hasSerial ? `// Serial communication: 9600 baud (Standard Arduino Uno)` : ``) + `
 
 long debounce = 200;
+` + (hasSerial ? `bool notPrint = true;` : ``) + `
 enum STATE {`+ app.states.map(s => s.name).join(', ') + `};
 
 STATE currentState = `+ app.initial.ref?.name + `;`, NL);
@@ -76,7 +77,7 @@ void loop() {`);
 	}
 	
 	fileNode.append(`
-	switch(currentState){`, NL);
+	switch(currentState){`);
 
 	for (const state of app.states) {
 		compileState(state, fileNode, hasSerial);
@@ -118,8 +119,7 @@ function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial:
 		compileTransition(state.transition, fileNode, hasSerial);
 	}
 
-	fileNode.append(`
-		break;`);
+	fileNode.append(`		break;`);
 }
 
 
@@ -133,7 +133,10 @@ function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
 			message = message.substring(1, message.length - 1);
 		}
 		fileNode.append(`
-			Serial.println("` + message + `");`);
+			if(notPrint) {
+				Serial.println("` + message + `");
+				notPrint = false;
+			}`);
 	}
 }
 
@@ -174,13 +177,16 @@ function compileTransition(transition: TransitionList, fileNode: CompositeGenera
 	const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
 	const condition = parts.length > 1 ? `( ` + parts.join(op) + ` )` : (parts[0] || 'false');
 
-	const debounceCode = sensors.size > 0 
+	const debounceCode = sensors.size > 0
         ? `
                 ` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n\t\t\t\t')
         : '';
 
+	const notPrintCode = hasSerial ? `
+				notPrint = true;` : '';
+
     fileNode.append(`
-            if( ` + condition + ` ) {` + debounceCode + `
-                currentState = ` + (transition as any).next.ref?.name + `;
-            }`, NL);
+			if( ` + condition + ` ) {` + debounceCode + `
+				currentState = ` + (transition as any).next.ref?.name + `;` + notPrintCode + `
+			}`, NL);
 }

@@ -36,16 +36,21 @@ public class ToWiring extends Visitor<StringBuffer> {
 	public void visit(App app) {
 		//first pass, create global vars
 		context.put("pass", PASS.ONE);
+		boolean hasSerial = hasSerialCommunication(app);
+		context.put("hasSerial", hasSerial);
 		w("// Wiring code generated from an ArduinoML model\n");
-		w(String.format("// Application name: %s\n", app.getName())+"\n");
+		w(String.format("// Application name: %s\n", app.getName()));
 
-        if (hasSerialCommunication(app)) {
+        if (hasSerial) {
             w("// Serial communication: 9600 baud (Standard Arduino Uno)\n");
         }
         w("\n");
 
 		w("long debounce = 200;\n");
-		w("\nenum STATE {");
+		if (hasSerialCommunication(app)) {
+			w("bool notPrint = true;\n");
+		}
+		w("enum STATE {");
 		String sep ="";
 		for(State state: app.getStates()){
 			w(sep);
@@ -132,7 +137,10 @@ public class ToWiring extends Visitor<StringBuffer> {
             message = message.substring(1, message.length() - 1);
         }
 
-        w("\t\t\tSerial.println(\"" + message + "\");\n");
+        w("\t\t\tif(notPrint) {\n");
+        w("\t\t\t\tSerial.println(\"" + message + "\");\n");
+        w("\t\t\t\tnotPrint = false;\n");
+        w("\t\t\t}\n");
     }
 
     @Override
@@ -228,6 +236,9 @@ public class ToWiring extends Visitor<StringBuffer> {
         }
 
         w("\t\t\t\tcurrentState = " + transitionList.getNext().getName() + ";\n");
+        if ((Boolean) context.get("hasSerial")) {
+            w("\t\t\t\tnotPrint = true;\n");
+        }
         w("\t\t\t}\n");
         w("\t\t\tbreak;\n");
     }
