@@ -64,7 +64,6 @@ int lastState = -1;
         for (const code of uniqueErrorCodes) {
             fileNode.append(`, error_` + code);
         }
-        ;
     }
     fileNode.append(`};
 
