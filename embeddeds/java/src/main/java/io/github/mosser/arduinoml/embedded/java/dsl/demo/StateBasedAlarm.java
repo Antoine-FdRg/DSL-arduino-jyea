@@ -29,7 +29,7 @@ public class StateBasedAlarm {
                 .goTo("on")
 
                 .from("on")
-                .when("button").isHigh()
+                .when("button").isLow()
                 .goTo("off")
                 .endTransitionTable()
 

@@ -10,6 +10,6 @@ app RedButton initial state off {
 		}
 		on {
 			red_led <= HIGH
-			button is HIGH => off
+			button is LOW => off
 		}
 }

@@ -1,16 +1,17 @@
 grammar ArduinoMl
 
 entry App:
-	'app' name=ID 'initial' 'state' initial=[State:ID]
-	'{'
-		'bricks'
-		bricks+=Brick
-		(bricks+=Brick)* 
-		
-		'states'
-		states+=State
-		( states+=State)* 		
-	'}';
+    'app' name=ID
+    'initial' 'state' initial=[State:ID]
+    '{'
+       'bricks'
+       bricks+=Brick
+       (bricks+=Brick)*
+
+       'states'
+       states+=State
+       ( states+=State)*
+    '}';
 
 Brick:
       Actuator
@@ -19,16 +20,23 @@ Brick:
 ;
 
 Actuator:
-	{infer Actuator}
-	'Actuator' name=ID ':' outputPin=INT;
+    {infer Actuator}
+    'Actuator' name=ID ':' outputPin=INT;
 
 Sensor :
-	{infer Sensor}
-	'Sensor'  name=ID ':' inputPin=INT;
-	
+    DigitalSensor | SerialSensor;
+
+DigitalSensor:
+    {infer DigitalSensor}
+    'Sensor' name=ID ':' inputPin=INT;
+
+SerialSensor:
+    {infer SerialSensor}
+    'SerialSensor' name=ID;
+
 State :
 	name=ID '{'
-		(actions+=Action)* 
+		(actions+=Action)*
 		transition=TransitionList
 	'}';
 
@@ -36,10 +44,15 @@ LCDBrick:
     {infer LCDBrick}
     'LCD' name=ID;
 
-Action:
-      actuator=[Actuator:ID] '<=' value=Signal
-    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage
-;
+Action :
+    SetAction | SendAction;
+
+SetAction:
+    actuator=[Actuator:ID] '<=' value=Signal
+    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage;
+
+SendAction:
+    'send' message=STRING;
 
 LCDMessage:
     parts+=LCDMessagePart ('+' parts+=LCDMessagePart)*;
@@ -69,10 +82,16 @@ SignalTransitionList:
 	) '=>' (next=[State:ID] | 'error' errorCode=INT);
 
 TemporalTransitionList:
-	'after' delay=INT 'ms' '=>' next=[State:ID];
+	'after' delay=INT 'ms' '=>' (next=[State:ID] | 'error' errorCode=INT);
 
 SignalTransition:
-	sensor=[Sensor:ID] 'is' value=Signal;
+	DigitalTransition | SerialTransition;
+
+DigitalTransition:
+    sensor=[Sensor:ID] 'is' value=Signal;
+
+SerialTransition:
+    sensor=[Sensor:ID] 'receives' (pattern=STRING | any?='any');
 
 Signal:
 	value=(HIGH | LOW);

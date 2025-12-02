@@ -60,7 +60,7 @@ export class ArduinoMlValidator {
             if (part.$type === 'BrickValueRef') {
                 const brick = (part as BrickValueRef).brick?.ref;
                 if (!brick) continue;
-                if (brick.$type === 'Sensor') {
+                if (brick.$type === 'DigitalSensor') {
                     length += 4; // HIGH ou LOW
                 }
                 else if (brick.$type === 'Actuator') {

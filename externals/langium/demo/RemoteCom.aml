@@ -1,0 +1,26 @@
+app RemoteComApp initial state bootstrap {
+
+    bricks
+    Actuator led: 12
+    SerialSensor keyboard
+
+    states
+    bootstrap {
+        led <= LOW
+        send "Press a key to start App ..."
+        keyboard receives any => led_off 
+    }
+
+    led_off {
+        led <= LOW
+        send "Press ON to light up the led ..."
+        keyboard receives "ON" => led_on
+    }
+
+    led_on {
+        led <= HIGH
+        send "Press OFF to light down the led ..."
+        keyboard receives "OFF" => led_off
+    }
+
+}

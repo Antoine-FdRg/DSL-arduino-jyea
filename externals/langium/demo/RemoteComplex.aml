@@ -1,0 +1,22 @@
+app RemoteComplexApp initial state off {
+    bricks
+    Actuator led: 12
+    Sensor button: 11
+    SerialSensor keyboard
+
+    states 
+
+    off {
+        led <= LOW
+        send "Press ON to activate led ..."
+        AND {
+            keyboard receives "ON"
+            button is HIGH
+        } => on
+    }
+
+    on {
+        led <= HIGH
+        button is LOW => off
+    }
+}

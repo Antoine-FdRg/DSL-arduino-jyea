@@ -1,11 +1,11 @@
 package io.github.mosser.arduinoml.embedded.java.dsl;
 
 import io.github.mosser.arduinoml.kernel.behavioral.State;
-import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
-
+import io.github.mosser.arduinoml.kernel.structural.SerialSensor;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -43,6 +43,10 @@ public class TransitionTableBuilder {
         if (s == null)
             throw new IllegalArgumentException("Unknown state: ["+stateName+"]");
         return s;
+    }
+
+    Optional<SerialSensor> findSerialSensor(String sensorName) {
+        return parent.findSerialSensor(sensorName);
     }
 
     State getErrorState(int errorCode) {

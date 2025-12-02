@@ -28,6 +28,10 @@ public abstract class Visitor<T> {
 	public abstract void visit(LCDScreen lcd);
 	public abstract void visit(LCDAction lcdAction);
 
+    public abstract void visit(SerialSensor sensor);
+    public abstract void visit(SendAction action);
+    public abstract void visit(SerialTransition transition);
+
 	/***********************
 	 ** Helper mechanisms **
 	 ***********************/
