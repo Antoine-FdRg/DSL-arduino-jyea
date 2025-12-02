@@ -1,0 +1,17 @@
+app TimeoutAlarm initial state waiting {
+    bricks
+    Actuator alarm: 12
+    Sensor arm_button: 9
+
+    states
+    waiting {
+        alarm <= LOW
+        arm_button is HIGH => armed
+    }
+    
+    armed {
+        alarm <= HIGH
+        after 5000 ms => error 3
+    }
+
+}

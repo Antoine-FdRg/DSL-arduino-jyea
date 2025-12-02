@@ -47,10 +47,10 @@ public class TransitionListBuilder {
         local.setTransitions(transitionList);
         local.setNext(parent.findState(state));
         if(transitionList.isEmpty()){
-            throw new IllegalStateException("No transitions defined for going to state: ["+state+"]\nHow to fix  : Define at least one using when(<sensorName>)");
+            throw new IllegalStateException("No transitions defined for going to state: ["+state+"]\nHow to fix  : Define at least one using when(<sensorName>) or waitFor(delayMs)");
         }
         if(local.getConnector() == null && transitionList.size() > 1){
-            throw new IllegalStateException("Multiple transitions defined without a connector (AND/OR) for going to state: ["+state+"]\nHow to fix  : define a connector using startAnd()/startOr()");
+            throw new IllegalStateException("Multiple transitions defined without a connector (AND/OR) for going to state: ["+state+"]\nHow to fix  : define a connector using and()/or()");
         }
         return parent;
     }
@@ -59,12 +59,39 @@ public class TransitionListBuilder {
         return new TransitionBuilder(this).when(sensor);
     }
 
+    public TemporalTransitionBuilder waitFor(int delayInMs) {
+        return new TemporalTransitionBuilder(this, delayInMs);
+    }
+
     Sensor findSensor(String sensorName) {
         return parent.findSensor(sensorName);
     }
 
     void addTransition(Transition t) {
         this.transitionList.add(t);
+    }
+
+    public TransitionTableBuilder getParent() {
+        return parent;
+    }
+
+    public TransitionList getLocal() {
+        return local;
+    }
+
+    public List<Transition> getAccumulatedTransitions() {
+        return transitionList;
+    }
+    public TransitionTableBuilder error(int errorCode) {
+        local.setTransitions(transitionList);
+        local.setNext(parent.getErrorState(errorCode));
+        if(transitionList.isEmpty()){
+            throw new IllegalStateException("No transitions defined for going to error state\nHow to fix  : Define at least one using when(<sensorName>)");
+        }
+        if(local.getConnector() == null && transitionList.size() > 1){
+            throw new IllegalStateException("Multiple transitions defined without a connector (AND/OR) for going to error state\nHow to fix  : define a connector using startAnd()/startOr()");
+        }
+        return parent;
     }
 
     SerialSensor findSerialSensor(String name) {

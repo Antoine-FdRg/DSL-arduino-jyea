@@ -8,30 +8,31 @@ import static io.github.mosser.arduinoml.embedded.java.dsl.AppBuilder.actuator;
 import static io.github.mosser.arduinoml.embedded.java.dsl.AppBuilder.application;
 import static io.github.mosser.arduinoml.embedded.java.dsl.AppBuilder.sensor;
 
-public class DualCheckAlarm {
+/**
+ * Demonstration of temporal transitions.
+ * Alan wants to define a state machine where LED1 is switched on
+ * after a push on button B1 and switched off 800ms after,
+ * waiting again for a new push on B1.
+ */
+public class TemporalTransitionDemo {
     public static void main(String[] args) {
 
         App myApp =
-            application("red_button")
+            application("temporal_transition_demo")
                 .uses(sensor("b1", 9))
-                .uses(sensor("b2", 10))
-                .uses(actuator("buzzer", 12))
-                .hasForState("on")
-                    .setting("buzzer").toHigh()
-                .endState()
+                .uses(actuator("led1", 12))
                 .hasForState("off").initial()
-                    .setting("buzzer").toLow()
+                    .setting("led1").toLow()
+                .endState()
+                .hasForState("on")
+                    .setting("led1").toHigh()
                 .endState()
                     .beginTransitionTable()
                     .from("off")
-                        .when("b1" ).isHigh()
-                        .and()
-                        .when("b2" ).isHigh()
+                        .when("b1").isHigh()
                     .goTo("on")
                     .from("on")
-                        .when("b1").isLow()
-                        .or()
-                        .when("b2").isLow()
+                        .waitFor(800)
                     .goTo("off")
                     .endTransitionTable()
                 .build();

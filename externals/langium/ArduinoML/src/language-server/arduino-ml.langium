@@ -1,20 +1,23 @@
 grammar ArduinoMl
 
 entry App:
-    'app' name=ID 
+    'app' name=ID
     'initial' 'state' initial=[State:ID]
     '{'
        'bricks'
        bricks+=Brick
-       (bricks+=Brick)* 
-       
+       (bricks+=Brick)*
+
        'states'
        states+=State
        ( states+=State)*
     '}';
 
-Brick :
-    (Actuator | Sensor);
+Brick:
+      Actuator
+    | Sensor
+    | LCDBrick
+;
 
 Actuator:
     {infer Actuator}
@@ -30,47 +33,70 @@ DigitalSensor:
 SerialSensor:
     {infer SerialSensor}
     'SerialSensor' name=ID;
-    
+
 State :
-    name=ID '{'
-       actions+=Action
-       (actions+=Action)* 
-       transition=TransitionList
-    '}';
+	name=ID '{'
+		(actions+=Action)*
+		transition=TransitionList
+	'}';
+
+LCDBrick:
+    {infer LCDBrick}
+    'LCD' name=ID;
 
 Action :
     SetAction | SendAction;
 
 SetAction:
-    actuator=[Actuator:ID] '<=' value=Signal;
+    actuator=[Actuator:ID] '<=' value=Signal
+    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage;
 
 SendAction:
     'send' message=STRING;
 
-TransitionList:
-    (
-       connector=Logic '{'
-          (transitions+=Transition)
-          (transitions+=Transition)*
-       '}' '=>' next=[State:ID]
-    ) | (
-       transitions+=Transition
-    ) '=>' next=[State:ID];
+LCDMessage:
+    parts+=LCDMessagePart ('+' parts+=LCDMessagePart)*;
 
-Transition:
-    DigitalTransition | SerialTransition;
+LCDMessagePart:
+      ConstantText
+    | BrickValueRef
+;
+
+ConstantText:
+    value=STRING;
+
+BrickValueRef:
+    brick=[Brick:ID];
+
+TransitionList:
+	SignalTransitionList | TemporalTransitionList;
+
+SignalTransitionList:
+	(
+		connector=Logic '{'
+			(transitions+=SignalTransition)
+			(transitions+=SignalTransition)*
+		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
+	) | (
+		transitions+=SignalTransition
+	) '=>' (next=[State:ID] | 'error' errorCode=INT);
+
+TemporalTransitionList:
+	'after' delay=INT 'ms' '=>' (next=[State:ID] | 'error' errorCode=INT);
+
+SignalTransition:
+	DigitalTransition | SerialTransition;
 
 DigitalTransition:
-    sensor=[DigitalSensor:ID] 'is' value=Signal;
+    sensor=[Sensor:ID] 'is' value=Signal;
 
 SerialTransition:
-    sensor=[SerialSensor:ID] 'receives' (pattern=STRING | any?='any');
+    sensor=[Sensor:ID] 'receives' (pattern=STRING | any?='any');
 
 Signal:
-    value=(HIGH | LOW);
-    
+	value=(HIGH | LOW);
 Logic:
-    value=(AND | OR);
+	value=(AND | OR);
 
 terminal HIGH: 'HIGH';
 terminal LOW: 'LOW';
