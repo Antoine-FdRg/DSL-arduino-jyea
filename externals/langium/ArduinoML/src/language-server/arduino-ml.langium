@@ -3,10 +3,12 @@ grammar ArduinoMl
 entry App:
     'app' name=ID
     'initial' 'state' initial=[State:ID]
+    ('use' useSerialMonitor=COMPONENT)?
     '{'
        'bricks'
        bricks+=Brick
        (bricks+=Brick)*
+
 
        'states'
        states+=State
@@ -24,15 +26,8 @@ Actuator:
     'Actuator' name=ID ':' outputPin=INT;
 
 Sensor :
-    DigitalSensor | SerialSensor;
-
-DigitalSensor:
-    {infer DigitalSensor}
+    {infer Sensor}
     'Sensor' name=ID ':' inputPin=INT;
-
-SerialSensor:
-    {infer SerialSensor}
-    'SerialSensor' name=ID;
 
 State :
 	name=ID '{'
@@ -48,11 +43,11 @@ Action :
     SetAction | SendAction;
 
 SetAction:
-    actuator=[Actuator:ID] '<=' value=Signal
-    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage;
+    actuator=[Actuator:ID] '<=' value=Signal;
 
 SendAction:
-    'send' message=STRING;
+    'send' message=STRING
+    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage;
 
 LCDMessage:
     parts+=LCDMessagePart ('+' parts+=LCDMessagePart)*;
@@ -91,7 +86,7 @@ DigitalTransition:
     sensor=[Sensor:ID] 'is' value=Signal;
 
 SerialTransition:
-    sensor=[Sensor:ID] 'receives' (pattern=STRING | any?='any');
+    'receives' (pattern=STRING | any?='any');
 
 Signal:
 	value=(HIGH | LOW);
@@ -103,6 +98,8 @@ terminal LOW: 'LOW';
 
 terminal AND: 'AND';
 terminal OR: 'OR';
+
+terminal COMPONENT: 'SerialMonitor';
 
 hidden terminal WS: /\s+/;
 terminal ID: /[_a-zA-Z][\w_]*/;

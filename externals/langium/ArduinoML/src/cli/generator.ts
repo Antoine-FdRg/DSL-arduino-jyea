@@ -5,6 +5,7 @@ import {
     Action,
     Actuator,
     App,
+    SendAction,
     Sensor,
     State,
     TransitionList,
@@ -93,7 +94,7 @@ LiquidCrystal ${lcdName}(10, 11, 12, 13, 14, 15, 16);
     }
 
     for (const brick of app.bricks) {
-        if (brick.$type === 'DigitalSensor') {
+        if (brick.$type === 'Sensor') {
             fileNode.append(
                 `
 bool ` +
@@ -117,7 +118,7 @@ void setup() {`);
     }
 
     for (const brick of app.bricks) {
-        if (brick.$type === 'DigitalSensor') {
+        if (brick.$type === 'Sensor') {
             compileSensor(brick, fileNode);
         } else if (brick.$type === 'Actuator') {
             compileActuator(brick, fileNode);
@@ -177,7 +178,7 @@ void loop() {`);
 }
 
 function hasSerialCommunication(app: App) {
-    const hasSerialSensor = app.bricks.some(b => b.$type === 'SerialSensor');
+    const hasSerialSensor = app.useSerialMonitor !== undefined;
     const hasSendAction = app.states.some(state => state.actions.some(action => action.$type === 'SendAction'));
     return hasSerialSensor || hasSendAction;
 }
@@ -194,10 +195,9 @@ function compileActuator(actuator: Actuator, fileNode: CompositeGeneratorNode) {
 }
 
 function compileSensor(sensor: Sensor, fileNode: CompositeGeneratorNode) {
-    if (sensor.$type === 'DigitalSensor') {
         fileNode.append(`
     pinMode(` + (sensor as any).inputPin + `, INPUT); // ` + sensor.name + ` [Sensor]`)
-    }
+    
 }
 
 function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial: boolean) {
@@ -216,18 +216,15 @@ function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial:
             break;`);
 }
 
-
 function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
-    if (action.$type === 'SetAction') {
+    if (action.$type === 'SendAction') {
+
         if (action.lcd) {
             compileLCDAction(action, fileNode);
             return;
         }
-        fileNode.append(`
-            digitalWrite(` + action.actuator?.ref?.outputPin + `, ` + action.value?.value + `);`);
-    } else if (action.$type === 'SendAction') {
         let message = action.message;
-        if (message.startsWith('"') && message.endsWith('"')) {
+        if (message && message.startsWith('"') && message.endsWith('"')) {
             message = message.substring(1, message.length - 1);
         }
         fileNode.append(`
@@ -235,11 +232,14 @@ function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
                 Serial.println("` + message + `");
                 notPrint = false;
             }`);
+        return
     }
+        fileNode.append(`
+            digitalWrite(` + action.actuator?.ref?.outputPin + `, ` + action.value?.value + `);`);
+
 }
 
-function compileLCDAction(action: Action, fileNode: CompositeGeneratorNode) {
-    if (action.$type !== 'SetAction') return;
+function compileLCDAction(action: SendAction, fileNode: CompositeGeneratorNode) {
     if (!action.lcdMessage) return;
 
     const lcdName = action.lcd?.ref?.name ?? "lcd";
@@ -302,7 +302,7 @@ function compileTransition(
 
     const digitalTransitions = transitions.filter(t =>
         (t.$type === 'DigitalTransition' || t.$type === 'SignalTransition') &&
-        t.sensor?.ref?.$type === 'DigitalSensor'
+        t.sensor?.ref?.$type === 'Sensor'
     );
     const serialTransitions = transitions.filter(t => t.$type === 'SerialTransition');
 
