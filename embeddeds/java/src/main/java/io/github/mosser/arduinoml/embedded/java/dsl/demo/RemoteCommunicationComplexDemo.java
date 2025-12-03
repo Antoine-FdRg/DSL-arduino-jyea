@@ -11,9 +11,9 @@ public class RemoteCommunicationComplexDemo {
     public static void main(String[] args) {
         App myApp =
                 application("RemoteComplexApp")
+                        .useSerialMonitor()
                         .uses(actuator("led", 12))
                         .uses(sensor("button", 11))
-                        .uses(serialSensor("keyboard"))
                         .hasForState("off").initial()
                             .setting("led").toLow()
                             .sending("\"Press ON to activate led ...\"")
@@ -23,7 +23,7 @@ public class RemoteCommunicationComplexDemo {
                         .endState()
                             .beginTransitionTable()
                             .from("off")
-                                .whenSerial("keyboard").receives("\"ON\"")
+                                .receives("\"ON\"")
                                 .and()
                                 .when("button").isHigh()
                             .goTo("on")

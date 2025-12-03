@@ -28,7 +28,7 @@ public class State implements NamedElement, Visitable {
 		return actions;
 	}
 
-	public void setActions(List<Action> actions) {
+	public void setActions(List<Action> setActions) {
 		this.actions = actions;
 	}
 

@@ -1,7 +1,7 @@
 package io.github.mosser.arduinoml.embedded.java.dsl;
 
 
-import io.github.mosser.arduinoml.kernel.behavioral.Action;
+import io.github.mosser.arduinoml.kernel.behavioral.SetAction;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
 
@@ -11,7 +11,7 @@ public class InstructionBuilder {
 
     private StateBuilder parent;
 
-    private Action local =  new Action();
+    private SetAction local =  new SetAction();
 
     InstructionBuilder(StateBuilder parent, String target) {
         this.parent = parent;

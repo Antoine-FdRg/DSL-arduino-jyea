@@ -1,14 +1,13 @@
 package io.github.mosser.arduinoml.embedded.java.dsl;
 
 import io.github.mosser.arduinoml.kernel.behavioral.LOGIC;
+import io.github.mosser.arduinoml.kernel.behavioral.SerialTransition;
 import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.behavioral.TransitionList;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
-import io.github.mosser.arduinoml.kernel.structural.SerialSensor;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class TransitionListBuilder {
 
@@ -94,13 +93,22 @@ public class TransitionListBuilder {
         return parent;
     }
 
-    SerialSensor findSerialSensor(String name) {
-        Optional<SerialSensor> opt = parent.findSerialSensor(name);
-        return opt.orElseThrow(() -> new IllegalArgumentException("Illegal serial sensor: ["+name+"]"));
+    public TransitionListBuilder receives(String pattern) {
+        SerialTransition serialTransition = new SerialTransition();
+        // Enlever les guillemets échappés si présents pour stocker juste le pattern
+        if (pattern.startsWith("\"") && pattern.endsWith("\"")) {
+            pattern = pattern.substring(1, pattern.length() - 1);
+        }
+        serialTransition.setPattern(pattern);
+        transitionList.add(serialTransition);
+        return this;
     }
 
-    public SerialTransitionBuilder whenSerial(String sensorName) {
-        return new SerialTransitionBuilder(this).whenSerial(sensorName);
+    public TransitionListBuilder receivesAny() {
+        SerialTransition serialTransition = new SerialTransition();
+        serialTransition.setMatchAny(true);
+        transitionList.add(serialTransition);
+        return this;
     }
 
 }

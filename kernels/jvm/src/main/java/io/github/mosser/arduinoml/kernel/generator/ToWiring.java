@@ -23,8 +23,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 	}
 
     private boolean hasSerialCommunication(App app) {
-        boolean hasSerialSensor = app.getBricks().stream()
-                .anyMatch(brick -> brick instanceof SerialSensor);
+        boolean hasSerialSensor = app.isUsingSerialMonitor();
 
         boolean hasSendAction = app.getStates().stream()
                 .anyMatch(state -> !state.getSendActions().isEmpty());
@@ -246,12 +245,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 		}
 	}
 
-    @Override
-    public void visit(SerialSensor sensor) {
-        // SerialSensor has no pinMode to configure
-    }
-
-    @Override
+	@Override
     public void visit(SendAction action) {
         String message = action.getMessage();
 
@@ -288,8 +282,8 @@ public class ToWiring extends Visitor<StringBuffer> {
 				w(String.format("            errorBlink(%s);\n",state.getName().substring(6)));
 				w("            break;\n");
 			} else {
-				for (Action action : state.getActions()) {
-					action.accept(this);
+				for (Action setAction : state.getActions()) {
+					setAction.accept(this);
 				}
 
                 for (SendAction action : state.getSendActions()) {
@@ -389,12 +383,12 @@ public class ToWiring extends Visitor<StringBuffer> {
 
 
 	@Override
-	public void visit(Action action) {
+	public void visit(SetAction setAction) {
 		if(context.get("pass") == PASS.ONE) {
 			return;
 		}
 		if(context.get("pass") == PASS.TWO) {
-			w(String.format("            digitalWrite(%d, %s);\n",action.getActuator().getPin(),action.getValue()));
+			w(String.format("            digitalWrite(%d, %s);\n", setAction.getActuator().getPin(), setAction.getValue()));
 		}
 	}
 

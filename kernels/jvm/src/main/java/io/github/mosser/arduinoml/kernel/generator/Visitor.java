@@ -19,7 +19,7 @@ public abstract class Visitor<T> {
 
 	public abstract void visit(TransitionList transitionList);
 
-	public abstract void visit(Action action);
+	public abstract void visit(SetAction setAction);
 
 	public abstract void visit(Actuator actuator);
 
@@ -27,9 +27,7 @@ public abstract class Visitor<T> {
 
 	public abstract void visit(LCDScreen lcd);
 	public abstract void visit(LCDAction lcdAction);
-
-    public abstract void visit(SerialSensor sensor);
-    public abstract void visit(SendAction action);
+	public abstract void visit(SendAction action);
     public abstract void visit(SerialTransition transition);
 
 	/***********************

@@ -7,7 +7,6 @@ import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.Brick;
 import io.github.mosser.arduinoml.kernel.structural.LCDScreen;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
-import io.github.mosser.arduinoml.kernel.structural.SerialSensor;
 
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +41,11 @@ public class AppBuilder {
         return this;
     }
 
+    public AppBuilder useSerialMonitor() {
+        this.theApp.useSerialMonitor();
+        return this;
+    }
+
     public static Brick sensor(String name, int port) { return createBrick(Sensor.class, name, port);  }
     public static Brick actuator(String name, int port) { return createBrick(Actuator.class, name, port);  }
     public static LCDScreen lcd(String name) {
@@ -57,15 +61,6 @@ public class AppBuilder {
         lcd.setD7Pin(15);
         lcd.setD8Pin(16);
         return lcd;
-    }
-
-    public static Brick serialSensor(String name) {
-        SerialSensor s = new SerialSensor();
-        if (name.isEmpty() || !Character.isLowerCase(name.charAt(0))) {
-            throw new IllegalArgumentException("Illegal brick name: ["+name+"]");
-        }
-        s.setName(name);
-        return s;
     }
 
     private static Brick createBrick(Class< ? extends Brick> kind, String name, int port) {
@@ -134,15 +129,6 @@ public class AppBuilder {
         return theApp.getBricks().stream()
                 .filter(b -> b.getName().equals(name))
                 .findFirst();
-    }
-
-    Optional<SerialSensor> findSerialSensor(String name) {
-        Optional<Brick> b = theApp.getBricks()
-                .stream()
-                    .filter(brick -> brick instanceof SerialSensor)
-                    .filter(sensor -> sensor.getName().equals(name))
-                .findFirst();
-        return b.map(brick -> (SerialSensor) brick);
     }
 
 }
