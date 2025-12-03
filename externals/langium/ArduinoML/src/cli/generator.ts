@@ -212,7 +212,7 @@ function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial:
     }
 
     if (state.transition !== null) {
-        compileTransition(state.transition, fileNode, []);
+        compileTransition(state.transition, fileNode);
     }
 
     fileNode.append(`
@@ -280,20 +280,23 @@ function compileLCDAction(action: SendAction, fileNode: CompositeGeneratorNode) 
         }
     }
 }
-function recurssiveCompileTransition(transition: Transition, fileNode: CompositeGeneratorNode, parts: string[], debounces: string[], hasSerial: boolean = true) {   
+function recurssiveCompileTransition(transition: Transition, fileNode: CompositeGeneratorNode, parts: string[], debounces: string[]) {   
+    if ((transition as any).transitions) {
+        for (const subTransition of (transition as any).transitions) {
+            recurssiveCompileTransition(subTransition, fileNode, parts, debounces);
+        }
+    } else {
         switch (transition.$type) {
-        case "ConditionList":
-            recurssiveCompileTransition(transition, fileNode, parts, debounces, hasSerial);
-            break;
-        case "TemporalTransition":
-            compileTemporalTransition(transition as unknown as TemporalTransition, fileNode, parts);
-            break;
-        case "SignalTransition":
-            compileSignalTransition(transition as unknown as SignalTransition, fileNode, parts, debounces);
-            break;
-        case "MessageTransition":
-            compileMessageTransition(transition as unknown as MessageTransition, fileNode, parts, hasSerial);
-            break;
+            case "TemporalTransition":
+                compileTemporalTransition(transition as unknown as TemporalTransition, fileNode, parts);
+                break;
+            case "SignalTransition":
+                compileSignalTransition(transition as unknown as SignalTransition, fileNode, parts, debounces);
+                break;
+            case "MessageTransition":
+                compileMessageTransition(transition as unknown as MessageTransition, fileNode, parts);
+                break;
+        }
     }
 }
 
@@ -301,30 +304,15 @@ function compileTransition(
     transition: Transition,
     fileNode: CompositeGeneratorNode
 ) {
-    
     const parts: string[] = [];
     const debounces: string[] = [];
     recurssiveCompileTransition(transition, fileNode, parts, debounces);
 
-
-    for (const t of messageTransitions) {
-        if (t.any) {
-            parts.push(`(serialInput.length() > 0)`);
-        } else if (t.pattern) {
-            let pattern = t.pattern;
-            // Remove quotes if they exist (pattern comes from STRING terminal)
-            if ((pattern.startsWith('"') && pattern.endsWith('"')) ||
-                (pattern.startsWith("'") && pattern.endsWith("'"))) {
-                pattern = pattern.substring(1, pattern.length - 1);
-            }
-            parts.push(`(serialInput == "` + pattern + `")`)
-        }
-    }
-
-
-
     const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
-    const condition = parts.length > 1 ? `(` + parts.join(` ` + op + ` `) + `)` : (parts[0] || 'false');
+    if(parts.length === 0){
+        parts.push('true');
+    }
+    const condition = parts.length > 1 ? `(` + parts.join(` ` + op + ` `) + `)` : parts[0];
     const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
 
     const debounceCode = debounces.length > 0 ? `                ` + debounces.join(`
@@ -365,7 +353,7 @@ function compileSignalTransition(transition:SignalTransition, fileNode:any, part
     return
 }
 
-function compileMessageTransition(transition:MessageTransition, fileNode:any, parts: string[], hasSerial: boolean) {
+function compileMessageTransition(transition:MessageTransition, fileNode:any, parts: string[]) {
     if (transition.any) {
         parts.push(`(serialInput.length() > 0)`);
     } else if (transition.pattern) {

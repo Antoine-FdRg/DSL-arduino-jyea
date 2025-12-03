@@ -5,18 +5,18 @@ entry App:
     'initial' 'state' initial=[State:ID]
     ('use' useSerialMonitor=COMPONENT)?
     '{'
-       'bricks'
-       bricks+=Brick
-       (bricks+=Brick)*
+        'bricks'
+        bricks+=Brick
+        (bricks+=Brick)*
 
 
-       'states'
-       states+=State
-       ( states+=State)*
+        'states'
+        states+=State
+    ( states+=State)*
     '}';
 
 Brick:
-      Actuator
+    Actuator
     | Sensor
     | LCDBrick
 ;
@@ -53,7 +53,7 @@ LCDMessage:
     parts+=LCDMessagePart ('+' parts+=LCDMessagePart)*;
 
 LCDMessagePart:
-      ConstantText
+    ConstantText
     | BrickValueRef
 ;
 
@@ -64,16 +64,15 @@ BrickValueRef:
     brick=[Brick:ID];
 
 Transition:
-	(BooleanExpression) 
-    '=>' (next=[State:ID] | 'error' errorCode=INT);
+	BooleanExpression '=>' (next=[State:ID] | 'error' errorCode=INT);
 
 BooleanExpression:
     SignalTransition | TemporalTransition | MessageTransition | ConditionList;
 
 
-ConditionList:
+ConditionList infers BooleanExpression:
     connector=Logic '{'
-        (transitions+=BooleanExpression)
+        transitions+=BooleanExpression
         (transitions+=BooleanExpression)+
     '}';
 
