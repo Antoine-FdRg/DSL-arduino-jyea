@@ -5,10 +5,13 @@ import {
     Action,
     Actuator,
     App,
+    MessageTransition,
     SendAction,
     Sensor,
+    SignalTransition,
     State,
-    TransitionList,
+    TemporalTransition,
+    Transition,
 } from "../language-server/generated/ast";
 import { extractDestinationAndName } from "./cli-util";
 
@@ -209,7 +212,7 @@ function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial:
     }
 
     if (state.transition !== null) {
-        compileTransition(state.transition, fileNode, hasSerial);
+        compileTransition(state.transition, fileNode, []);
     }
 
     fileNode.append(`
@@ -277,63 +280,34 @@ function compileLCDAction(action: SendAction, fileNode: CompositeGeneratorNode) 
         }
     }
 }
+function recurssiveCompileTransition(transition: Transition, fileNode: CompositeGeneratorNode, parts: string[], debounces: string[], hasSerial: boolean = true) {   
+        switch (transition.$type) {
+        case "ConditionList":
+            recurssiveCompileTransition(transition, fileNode, parts, debounces, hasSerial);
+            break;
+        case "TemporalTransition":
+            compileTemporalTransition(transition as unknown as TemporalTransition, fileNode, parts);
+            break;
+        case "SignalTransition":
+            compileSignalTransition(transition as unknown as SignalTransition, fileNode, parts, debounces);
+            break;
+        case "MessageTransition":
+            compileMessageTransition(transition as unknown as MessageTransition, fileNode, parts, hasSerial);
+            break;
+    }
+}
 
 function compileTransition(
-    transition: TransitionList,
-    fileNode: CompositeGeneratorNode,
-    hasSerial: boolean
+    transition: Transition,
+    fileNode: CompositeGeneratorNode
 ) {
-    const transitions: any[] = (transition as any).transitions || [];
-    // Check if this is a TemporalTransitionList (has delay property)
-    if ((transition as any).delay !== undefined) {
-        const delay = (transition as any).delay;
-        const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
-        fileNode.append(
-            `
-            if (millis() - stateEnteredTime > ${delay}) {
-                currentState = ` +
-            nextName +
-            `;
-            }`,
-            NL
-        );
-        return;
-    }
-
-    const digitalTransitions = transitions.filter(t =>
-        (t.$type === 'DigitalTransition' || t.$type === 'SignalTransition') &&
-        t.sensor?.ref?.$type === 'Sensor'
-    );
-    const serialTransitions = transitions.filter(t => t.$type === 'SerialTransition');
-
-    // Handle SignalTransitionList
-    const sensors = new Set<string>();
-    for (const t of digitalTransitions) {
-        const name = t.sensor?.ref?.name;
-        if (name) sensors.add(name);
-    }
-
-    for (const s of Array.from(sensors)) {
-        fileNode.append(
-            `
-            ` +
-            s +
-            `BounceGuard = millis() - ` +
-            s +
-            `LastDebounceTime > debounce;`,
-            NL
-        );
-    }
-
-    const parts = digitalTransitions.map((t) => {
-        const pin = t.sensor?.ref?.inputPin;
-        const name = t.sensor?.ref?.name;
-        const val = t.value?.value;
-        return `(digitalRead(${pin}) == ${val} && ${name}BounceGuard)`;
-    });
+    
+    const parts: string[] = [];
+    const debounces: string[] = [];
+    recurssiveCompileTransition(transition, fileNode, parts, debounces);
 
 
-    for (const t of serialTransitions) {
+    for (const t of messageTransitions) {
         if (t.any) {
             parts.push(`(serialInput.length() > 0)`);
         } else if (t.pattern) {
@@ -347,22 +321,61 @@ function compileTransition(
         }
     }
 
+
+
     const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
     const condition = parts.length > 1 ? `(` + parts.join(` ` + op + ` `) + `)` : (parts[0] || 'false');
     const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
 
-    const debounceCode = sensors.size > 0
-        ? `
-                ` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n                ')
-        : '';
+    const debounceCode = debounces.length > 0 ? `                ` + debounces.join(`
+                `) : '';
+    const hasSerial = hasSerialCommunication(transition.$container.$container as App);
 
     const notPrintCode = hasSerial ? `
-                notPrint = true;` : '';
+            notPrint = true;` : '';
 
     fileNode.append(`
             if (` + condition + `) {` + debounceCode + `
                 currentState = ` + nextName + `;` + notPrintCode + `
             }`, NL);
+}
+
+function compileTemporalTransition(transition:TemporalTransition, fileNode:any, parts: string[]) {
+    const delay = transition.delay;
+    parts.push(`(millis() - stateEnteredTime > ${delay})`);
+    return;
+}
+
+function compileSignalTransition(transition:SignalTransition, fileNode:any, parts: string[], debounces: string[]) {
+    const sensorName = transition.sensor?.ref?.name;
+    fileNode.append(
+        `
+        ` +
+        sensorName +
+        `BounceGuard = millis() - ` +
+        sensorName +
+        `LastDebounceTime > debounce;`,
+        NL
+    );
+    debounces.push(sensorName + `LastDebounceTime = millis();`);
+    const pin = transition.sensor?.ref?.inputPin;
+    const name = transition.sensor?.ref?.name;
+    const val = transition.value?.value;
+    parts.push(`(digitalRead(${pin}) == ${val} && ${name}BounceGuard)`);
+    return
+}
+
+function compileMessageTransition(transition:MessageTransition, fileNode:any, parts: string[], hasSerial: boolean) {
+    if (transition.any) {
+        parts.push(`(serialInput.length() > 0)`);
+    } else if (transition.pattern) {
+        let pattern = transition.pattern;
+        if ((pattern.startsWith('"') && pattern.endsWith('"')) ||
+            (pattern.startsWith("'") && pattern.endsWith("'"))) {
+            pattern = pattern.substring(1, pattern.length - 1);
+        }
+        parts.push(`(serialInput == "` + pattern + `")`)
+    }
 }
 
 function compileErrorLedActuatorCode(app: App, fileNode: CompositeGeneratorNode) {

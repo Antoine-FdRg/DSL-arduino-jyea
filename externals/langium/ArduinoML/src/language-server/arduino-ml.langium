@@ -32,7 +32,7 @@ Sensor :
 State :
 	name=ID '{'
 		(actions+=Action)*
-		transition=TransitionList
+		transition=Transition
 	'}';
 
 LCDBrick:
@@ -63,29 +63,27 @@ ConstantText:
 BrickValueRef:
     brick=[Brick:ID];
 
-TransitionList:
-	SignalTransitionList | TemporalTransitionList;
+Transition:
+	(BooleanExpression) 
+    '=>' (next=[State:ID] | 'error' errorCode=INT);
 
-SignalTransitionList:
-	(
-		connector=Logic '{'
-			(transitions+=SignalTransition)
-			(transitions+=SignalTransition)*
-		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
-	) | (
-		transitions+=SignalTransition
-	) '=>' (next=[State:ID] | 'error' errorCode=INT);
+BooleanExpression:
+    SignalTransition | TemporalTransition | MessageTransition | ConditionList;
 
-TemporalTransitionList:
-	'after' delay=INT 'ms' '=>' (next=[State:ID] | 'error' errorCode=INT);
+
+ConditionList:
+    connector=Logic '{'
+        (transitions+=BooleanExpression)
+        (transitions+=BooleanExpression)+
+    '}';
+
+TemporalTransition:
+	'after' delay=INT 'ms';
 
 SignalTransition:
-	DigitalTransition | SerialTransition;
-
-DigitalTransition:
     sensor=[Sensor:ID] 'is' value=Signal;
 
-SerialTransition:
+MessageTransition:
     'receives' (pattern=STRING | any?='any');
 
 Signal:
