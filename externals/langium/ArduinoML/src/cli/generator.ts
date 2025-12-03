@@ -215,8 +215,7 @@ function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial:
         compileTransition(state.transition, fileNode);
     }
 
-    fileNode.append(`
-            break;`);
+    fileNode.append(NL,`\t\t\tbreak;`, NL);
 }
 
 function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
@@ -281,7 +280,7 @@ function compileLCDAction(action: SendAction, fileNode: CompositeGeneratorNode) 
     }
 }
 function recurssiveCompileTransition(transition: Transition, fileNode: CompositeGeneratorNode, parts: string[], debounces: string[]) {   
-    if ((transition as any).transitions) {
+    if ((transition as any).transitions.length > 0) {
         for (const subTransition of (transition as any).transitions) {
             recurssiveCompileTransition(subTransition, fileNode, parts, debounces);
         }
@@ -308,24 +307,24 @@ function compileTransition(
     const debounces: string[] = [];
     recurssiveCompileTransition(transition, fileNode, parts, debounces);
 
-    const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
+    const op = (transition as any).connector?.value === 'AND' ? '&&' : '||';
     if(parts.length === 0){
         parts.push('true');
     }
     const condition = parts.length > 1 ? `(` + parts.join(` ` + op + ` `) + `)` : parts[0];
     const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
 
-    const debounceCode = debounces.length > 0 ? `                ` + debounces.join(`
-                `) : '';
+    const debounceCode = debounces.length > 0 ? `\n\t\t\t\t` + debounces.join(`\n\t\t\t\t`) : '';
     const hasSerial = hasSerialCommunication(transition.$container.$container as App);
 
     const notPrintCode = hasSerial ? `
-            notPrint = true;` : '';
+                notPrint = true;` : '';
 
     fileNode.append(`
             if (` + condition + `) {` + debounceCode + `
-                currentState = ` + nextName + `;` + notPrintCode + `
-            }`, NL);
+                currentState = ` + nextName + `;` +
+                notPrintCode + `
+            }`);
 }
 
 function compileTemporalTransition(transition:TemporalTransition, fileNode:any, parts: string[]) {
@@ -337,13 +336,9 @@ function compileTemporalTransition(transition:TemporalTransition, fileNode:any, 
 function compileSignalTransition(transition:SignalTransition, fileNode:any, parts: string[], debounces: string[]) {
     const sensorName = transition.sensor?.ref?.name;
     fileNode.append(
-        `
-        ` +
-        sensorName +
-        `BounceGuard = millis() - ` +
-        sensorName +
-        `LastDebounceTime > debounce;`,
-        NL
+        NL, 
+        "\t\t\t" + sensorName + `BounceGuard = millis() - ` +
+        sensorName +`LastDebounceTime > debounce;`
     );
     debounces.push(sensorName + `LastDebounceTime = millis();`);
     const pin = transition.sensor?.ref?.inputPin;
