@@ -6,23 +6,23 @@ import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
 public class SignalTransitionBuilder {
     
-    private BooleanExpressionBuilder parent;
+    private IBooleanExpression parent;
     private Sensor sensor;
 
     private SignalTransition local = new SignalTransition();
 
-    SignalTransitionBuilder(BooleanExpressionBuilder parent, Sensor sensor) {
+    SignalTransitionBuilder(IBooleanExpression parent, Sensor sensor) {
         this.parent = parent;
         this.sensor = sensor;
     }
 
-    public BooleanExpressionBuilder isHigh() {
+    public IBooleanExpression isHigh() {
         local.setValue(SIGNAL.HIGH);
         parent.saveExpression(local);
         return parent;
     }
 
-    public BooleanExpressionBuilder isLow() {
+    public IBooleanExpression isLow() {
         local.setValue(SIGNAL.LOW);
         parent.saveExpression(local);
         return parent;

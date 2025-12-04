@@ -18,8 +18,8 @@ public class TransitionTableBuilder {
         this.sensors = sensors;
     }
 
-    public BooleanExpressionBuilder from(String state) {
-        return new BooleanExpressionBuilder(new TransitionBuilder(this, state));
+    public TransitionBuilder from(String state) {
+        return new TransitionBuilder(this, state);
     }
 
 
