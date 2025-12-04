@@ -13,6 +13,9 @@ public class TimeTransition extends BooleanExpression {
 
     private int delayInMS;
 
+    public TimeTransition(int delayInMS) {
+        this.delayInMS = delayInMS;
+    }
 
     public int getDelay() {
         return delayInMS;
