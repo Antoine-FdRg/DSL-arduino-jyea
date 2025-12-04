@@ -1,5 +1,7 @@
 package io.github.mosser.arduinoml.kernel.behavioral;
 
+import java.rmi.server.ExportException;
+
 import io.github.mosser.arduinoml.kernel.generator.Visitor;
 
 /**
@@ -7,7 +9,7 @@ import io.github.mosser.arduinoml.kernel.generator.Visitor;
  * This transition type is triggered automatically after entering a state,
  * without requiring any sensor input.
  */
-public class TimeTransition extends Transition {
+public class TimeTransition extends BooleanExpression {
 
     private int delayInMS;
 

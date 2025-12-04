@@ -23,13 +23,15 @@ public class ToWiring extends Visitor<StringBuffer> {
 	}
 
     private boolean hasSerialCommunication(App app) {
-        boolean hasSerialSensor = app.isUsingSerialMonitor();
+    boolean hasSerialMonitor = app.isUsingSerialMonitor();
 
-        boolean hasSendAction = app.getStates().stream()
-                .anyMatch(state -> !state.getSendActions().isEmpty());
+    boolean hasSendAction = app.getStates().stream()
+            .flatMap(state -> state.getActions().stream())
+            .anyMatch(a -> a instanceof SendAction);
 
-        return hasSerialSensor || hasSendAction;
-    }
+    return hasSerialMonitor || hasSendAction;
+}
+
 
 	private String escape(String s) {
 		return s.replace("\\", "\\\\").replace("\"", "\\\"");
@@ -247,7 +249,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 
 	@Override
     public void visit(SendAction action) {
-        String message = action.getMessage();
+        String message = action.getSerialMessage();
 
         if (message.startsWith("\"") && message.endsWith("\"")) {
             message = message.substring(1, message.length() - 1);
@@ -260,7 +262,7 @@ public class ToWiring extends Visitor<StringBuffer> {
     }
 
     @Override
-    public void visit(SerialTransition transition) {
+    public void visit(MessageTransition transition) {
         if (transition.isMatchAny()) {
             w("( serialInput.length() > 0)");
         } else {
@@ -270,31 +272,29 @@ public class ToWiring extends Visitor<StringBuffer> {
     }
 
     @Override
-	public void visit(State state) {
-		if(context.get("pass") == PASS.ONE){
-			w(state.getName());
-			return;
-		}
-		if(context.get("pass") == PASS.TWO) {
-			w("        case " + state.getName() + ":\n");
+public void visit(State state) {
+    if (context.get("pass") == PASS.ONE) {
+        w(state.getName());
+        return;
+    }
+    if (context.get("pass") == PASS.TWO) {
+        w("        case " + state.getName() + ":\n");
 
-			if(state.getName().startsWith("error_")){
-				w(String.format("            errorBlink(%s);\n",state.getName().substring(6)));
-				w("            break;\n");
-			} else {
-				for (Action setAction : state.getActions()) {
-					setAction.accept(this);
-				}
+        if (state.getName().startsWith("error_")) {
+            w(String.format("            errorBlink(%s);\n", state.getName().substring(6)));
+            w("            break;\n");
+        } else {
+            for (Action action : state.getActions()) {
+                action.accept(this); 
+            }
 
-                for (SendAction action : state.getSendActions()) {
-                    action.accept(this);
-                }
-				state.getTransitionList().accept(this);
-				w("\n            break;\n");
-			}
+            state.getTransition().accept(this);
+
+            w("\n            break;\n");
         }
+    }
+}
 
-	}
 
 	@Override
 	public void visit(SignalTransition transition) {
@@ -307,79 +307,111 @@ public class ToWiring extends Visitor<StringBuffer> {
         // TimeTransition handling will be managed in TransitionList visitor
     }
 
-    @Override
-    public void visit(TransitionList transitionList) {
-		if(transitionList.getTransitions().isEmpty()){
-			return;
-		}
-        List<SignalTransition> signalTransitions = transitionList.getTransitions().stream()
-                .filter(SignalTransition.class::isInstance)
-                .map(SignalTransition.class::cast)
-                .collect(Collectors.toList());
+@Override
+public void visit(Transition transition) {
+    // On part de la condition de la transition
+    BooleanExpression expr = transition.getCondition();
+    if (expr == null) {
+        return;
+    }
 
-        List<SerialTransition> serialTransitions = transitionList.getTransitions().stream()
-                .filter(t -> t instanceof SerialTransition)
-                .map(t -> (SerialTransition) t)
-                .collect(Collectors.toList());
+    // On force expr à être traitée comme un ConditionList
+    ConditionList conditionList;
+    if (expr instanceof ConditionList) {
+        conditionList = (ConditionList) expr;
+    } else {
+        // On enveloppe une condition simple dans un ConditionList "AND"
+        conditionList = new ConditionList();
+        conditionList.setConnector(LOGIC.AND);
+        conditionList.getExpressions().add(expr);
+    }
 
-        List<TimeTransition> temporalTransitions = transitionList.getTransitions().stream()
-                .filter(TimeTransition.class::isInstance)
-                .map(TimeTransition.class::cast)
-                .collect(Collectors.toList());
+    if (conditionList.getExpressions().isEmpty()) {
+        return;
+    }
 
-        List<String> sensorsName = signalTransitions.stream()
-                .map(t -> t.getSensor().getName())
-                .distinct()
-                .collect(Collectors.toList());
-        for (String name : sensorsName) {
-            w(String.format("            %sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
-                    name, name));
-        }
+    // On récupère les différentes formes de conditions
+    List<SignalTransition> signalTransitions = conditionList.getExpressions().stream()
+            .filter(SignalTransition.class::isInstance)
+            .map(SignalTransition.class::cast)
+            .collect(Collectors.toList());
 
-        List<String> parts = signalTransitions.stream()
-                .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
-                        t.getSensor().getPin(),
-                        t.getValue(),
-                        t.getSensor().getName()))
-                .collect(Collectors.toList());
+    List<MessageTransition> serialTransitions = conditionList.getExpressions().stream()
+            .filter(MessageTransition.class::isInstance)
+            .map(MessageTransition.class::cast)
+            .collect(Collectors.toList());
 
-        for (SerialTransition t : serialTransitions) {
-            if (t.isMatchAny()) {
-                parts.add("(serialInput.length() > 0)");
-            } else {
-                // Le pattern est stocké sans guillemets, il faut les ajouter pour la génération
-                parts.add("(serialInput == \"" + t.getPattern() + "\")");
-            }
-        }
+    List<TimeTransition> temporalTransitions = conditionList.getExpressions().stream()
+            .filter(TimeTransition.class::isInstance)
+            .map(TimeTransition.class::cast)
+            .collect(Collectors.toList());
 
-        String connector = transitionList.getConnector() == LOGIC.OR ? " || " : " && ";
-        String condition = parts.size() > 1 ? "(" + String.join(" " + connector + " ", parts) + ")" :
-                (parts.isEmpty() ? "false" : parts.get(0));
+    // Gestion du debounce pour les capteurs
+    List<String> sensorsName = signalTransitions.stream()
+            .map(t -> t.getSensor().getName())
+            .distinct()
+            .collect(Collectors.toList());
+    for (String name : sensorsName) {
+        w(String.format("            %sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
+                name, name));
+    }
 
-        w(String.format("            if (%s) {\n", condition));
+    // Construction de la condition (signaux + série)
+    List<String> parts = signalTransitions.stream()
+            .map(t -> String.format("(digitalRead(%d) == %s && %sBounceGuard)",
+                    t.getSensor().getPin(),
+                    t.getValue(),
+                    t.getSensor().getName()))
+            .collect(Collectors.toList());
 
-        for (String name : sensorsName) {
-            w(String.format("                %sLastDebounceTime = millis();\n", name));
-        }
-        for (SignalTransition transition : signalTransitions) {
-            transition.accept(this);
-        }
-
-        w("                currentState = " + transitionList.getNext().getName() + ";\n");
-        if ((Boolean) context.get("hasSerial")) {
-            w("                notPrint = true;\n");
-        }
-        w("            }\n");
-        // Handle temporal transitions
-        if (!temporalTransitions.isEmpty()) {
-            for (TimeTransition tempTransition : temporalTransitions) {
-                int delay = tempTransition.getDelay();
-                w(String.format("            if (millis() - stateEnteredTime > %d) {\n", delay));
-                w("                currentState = " + transitionList.getNext().getName() + ";\n");
-                w("            }\n");
-            }
+    for (MessageTransition t : serialTransitions) {
+        if (t.isMatchAny()) {
+            parts.add("(serialInput.length() > 0)");
+        } else {
+            parts.add("(serialInput == \"" + t.getPattern() + "\")");
         }
     }
+
+    String connector = conditionList.getConnector() == LOGIC.OR ? " || " : " && ";
+    String condition = parts.size() > 1
+            ? "(" + String.join(" " + connector + " ", parts) + ")"
+            : (parts.isEmpty() ? "false" : parts.get(0));
+
+    // IF principal pour signaux / série
+    w(String.format("            if (%s) {\n", condition));
+
+    for (String name : sensorsName) {
+        w(String.format("                %sLastDebounceTime = millis();\n", name));
+    }
+    for (SignalTransition sTransition : signalTransitions) {
+        sTransition.accept(this); // (aujourd’hui tu ne fais rien ici, c’est ok)
+    }
+
+    // Changement d'état : on utilise transition.getNext()
+    if (transition.getNext() != null) {
+        w("                currentState = " + transition.getNext().getName() + ";\n");
+    }
+    if ((Boolean) context.get("hasSerial")) {
+        w("                notPrint = true;\n");
+    }
+    w("            }\n");
+
+    // Transitions temporelles (after X ms)
+    if (!temporalTransitions.isEmpty()) {
+        for (TimeTransition tempTransition : temporalTransitions) {
+            int delay = tempTransition.getDelay();
+            w(String.format("            if (millis() - stateEnteredTime > %d) {\n", delay));
+            if (transition.getNext() != null) {
+                w("                currentState = " + transition.getNext().getName() + ";\n");
+            }
+            if ((Boolean) context.get("hasSerial")) {
+                w("                notPrint = true;\n");
+            }
+            w("            }\n");
+        }
+    }
+}
+
 
 
 	@Override
@@ -391,5 +423,22 @@ public class ToWiring extends Visitor<StringBuffer> {
 			w(String.format("            digitalWrite(%d, %s);\n", setAction.getActuator().getPin(), setAction.getValue()));
 		}
 	}
+
+	@Override
+	public void visit(ConditionList transitionList) {
+		// Handled in Transition visitor
+	}
+
+	@Override
+public void visit(ConstantText constantText) {
+    // Rien à faire ici normalement
+
+}
+
+@Override
+public void visit(BrickValueRef brickValueRef) {
+    // pareil normalement
+}
+	
 
 }
