@@ -190,7 +190,7 @@ trait ArduinoML {
   protected case class TransitionBuilder(from: StateBuilder, to: StateBuilder) {
     // Method to bind a transition to its condition. By side-effect it stores the transition in app
     def when(cond: ConditionBuilder): Unit = {
-      val trans = new Transition()
+      val trans = new Transition ()
       trans.setNext(getStateByName(to.name))
       trans.setSensor(getBrickByName(cond.sensor.name).asInstanceOf[Sensor])
       trans.setValue(cond.signal.asSignal)

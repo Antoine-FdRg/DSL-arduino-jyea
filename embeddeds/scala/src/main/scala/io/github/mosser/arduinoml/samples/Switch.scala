@@ -20,7 +20,7 @@ object Switch extends App with ArduinoML {
 
   // Declaring the transition system
   transitions {
-    on -> off when (button is high)
+    on -> off when (button is high)^pplkl
     off -> on when (button is high)
   }
 
