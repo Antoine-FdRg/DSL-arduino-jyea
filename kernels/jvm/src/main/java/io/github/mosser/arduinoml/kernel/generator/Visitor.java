@@ -17,13 +17,21 @@ public abstract class Visitor<T> {
 
 	public abstract void visit(TimeTransition transition);
 
-	public abstract void visit(TransitionList transitionList);
+	public abstract void visit(ConditionList transitionList);
+	public abstract void visit(Transition transition);
 
-	public abstract void visit(Action action);
+	public abstract void visit(SetAction setAction);
 
 	public abstract void visit(Actuator actuator);
 
 	public abstract void visit(Sensor sensor);
+
+	public abstract void visit(LCDScreen lcd);
+	public abstract void visit(LCDAction lcdAction);
+	public abstract void visit(SendAction action);
+    public abstract void visit(MessageTransition transition);
+	public abstract void visit(ConstantText constantText);
+	public abstract void visit(BrickValueRef brickValueRef);
 
 	/***********************
 	 ** Helper mechanisms **

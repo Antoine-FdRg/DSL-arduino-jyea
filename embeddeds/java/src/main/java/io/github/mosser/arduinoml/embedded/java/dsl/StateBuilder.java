@@ -1,6 +1,7 @@
 package io.github.mosser.arduinoml.embedded.java.dsl;
 
 
+import io.github.mosser.arduinoml.kernel.behavioral.SendAction;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
 
 public class StateBuilder {
@@ -15,6 +16,17 @@ public class StateBuilder {
 
     public InstructionBuilder setting(String sensorName) {
         return new InstructionBuilder(this, sensorName);
+    }
+
+    public StateBuilder sending(String message) {
+        SendAction action = new SendAction();
+        action.setSerialMessage(message);
+        local.getActions().add(action);
+        return this;
+    }
+
+    public DisplayBuilder displayOn(String lcdName) {
+        return new DisplayBuilder(this, lcdName);
     }
 
     public StateBuilder initial() { parent.theApp.setInitial(this.local); return this; }

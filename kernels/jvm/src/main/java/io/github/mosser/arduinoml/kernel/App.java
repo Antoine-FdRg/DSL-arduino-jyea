@@ -15,6 +15,7 @@ public class App implements NamedElement, Visitable {
 	private List<State> states = new ArrayList<State>();
 	private State initial;
 	private boolean useErrorState = false;
+	private boolean useSerialMonitor = false;
 
 	@Override
 	public String getName() {
@@ -61,5 +62,12 @@ public class App implements NamedElement, Visitable {
 
 	public void useErrorState() {
 		this.useErrorState = true;
+	}
+
+	public boolean isUsingSerialMonitor() {
+		return useSerialMonitor;
+	}
+	public void useSerialMonitor() {
+		this.useSerialMonitor = true;
 	}
 }

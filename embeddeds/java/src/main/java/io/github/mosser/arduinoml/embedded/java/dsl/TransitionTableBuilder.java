@@ -1,10 +1,7 @@
 package io.github.mosser.arduinoml.embedded.java.dsl;
 
 import io.github.mosser.arduinoml.kernel.behavioral.State;
-import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
-
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -21,8 +18,8 @@ public class TransitionTableBuilder {
         this.sensors = sensors;
     }
 
-    public TransitionListBuilder from(String state) {
-        return new TransitionListBuilder(this, state);
+    public TransitionBuilder from(String state) {
+        return new TransitionBuilder(this, state);
     }
 
 

@@ -1,56 +1,89 @@
 grammar ArduinoMl
 
 entry App:
-	'app' name=ID 'initial' 'state' initial=[State:ID]
-	'{'
-		'bricks'
-		bricks+=Brick
-		(bricks+=Brick)* 
-		
-		'states'
-		states+=State
-		( states+=State)* 		
-	'}';
+    'app' name=ID
+    'initial' 'state' initial=[State:ID]
+    ('use' useSerialMonitor=COMPONENT)?
+    '{'
+        'bricks'
+        bricks+=Brick
+        (bricks+=Brick)*
 
-Brick :
-	(Actuator | Sensor);
+
+        'states'
+        states+=State
+    ( states+=State)*
+    '}';
+
+Brick:
+    Actuator
+    | Sensor
+    | LCDBrick
+;
 
 Actuator:
-	{infer Actuator}
-	'Actuator' name=ID ':' outputPin=INT;
+    {infer Actuator}
+    'Actuator' name=ID ':' outputPin=INT;
 
 Sensor :
-	{infer Sensor}
-	'Sensor'  name=ID ':' inputPin=INT;
-	
+    {infer Sensor}
+    'Sensor' name=ID ':' inputPin=INT;
+
 State :
 	name=ID '{'
-		(actions+=Action)* 
-		transition=TransitionList
+		(actions+=Action)*
+		transition=Transition
 	'}';
 
+LCDBrick:
+    {infer LCDBrick}
+    'LCD' name=ID;
 
 Action :
-	actuator=[Actuator:ID] '<=' value=Signal;
+    SetAction | SendAction;
 
-TransitionList:
-	SignalTransitionList | TemporalTransitionList;
+SetAction:
+    actuator=[Actuator:ID] '<=' value=Signal;
 
-SignalTransitionList:
-	(
-		connector=Logic '{'
-			(transitions+=SignalTransition)
-			(transitions+=SignalTransition)*
-		'}' '=>' (next=[State:ID] | 'error' errorCode=INT)
-	) | (
-		transitions+=SignalTransition
-	) '=>' (next=[State:ID] | 'error' errorCode=INT);
+SendAction:
+    'send' message=STRING
+    | lcd=[LCDBrick:ID] 'displays' lcdMessage=LCDMessage;
 
-TemporalTransitionList:
-	'after' delay=INT 'ms' '=>' next=[State:ID];
+LCDMessage:
+    parts+=LCDMessagePart ('+' parts+=LCDMessagePart)*;
+
+LCDMessagePart:
+    ConstantText
+    | BrickValueRef
+;
+
+ConstantText:
+    value=STRING;
+
+BrickValueRef:
+    brick=[Brick:ID];
+
+Transition:
+	BooleanExpression '=>' (next=[State:ID] | 'error' errorCode=INT);
+
+BooleanExpression:
+    SignalTransition | TemporalTransition | MessageTransition | ConditionList;
+
+
+ConditionList infers BooleanExpression:
+    connector=Logic '{'
+        transitions+=BooleanExpression
+        (transitions+=BooleanExpression)+
+    '}';
+
+TemporalTransition:
+	'after' delay=INT 'ms';
 
 SignalTransition:
-	sensor=[Sensor:ID] 'is' value=Signal;
+    sensor=[Sensor:ID] 'is' value=Signal;
+
+MessageTransition:
+    'receives' (pattern=STRING | any?='any');
 
 Signal:
 	value=(HIGH | LOW);
@@ -62,6 +95,8 @@ terminal LOW: 'LOW';
 
 terminal AND: 'AND';
 terminal OR: 'OR';
+
+terminal COMPONENT: 'SerialMonitor';
 
 hidden terminal WS: /\s+/;
 terminal ID: /[_a-zA-Z][\w_]*/;

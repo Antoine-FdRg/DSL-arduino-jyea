@@ -7,11 +7,13 @@ import io.github.mosser.arduinoml.kernel.generator.Visitor;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.transform.TransformerFactoryConfigurationError;
+
 public class State implements NamedElement, Visitable {
 
 	private String name;
 	private List<Action> actions = new ArrayList<Action>();
-	private TransitionList transitionList = new TransitionList();
+	private Transition transition;
 
 	@Override
 	public String getName() {
@@ -23,24 +25,14 @@ public class State implements NamedElement, Visitable {
 		this.name = name;
 	}
 
-	public List<Action> getActions() {
-		return actions;
-	}
+	public List<Action> getActions() { return actions; }
+    public void setActions(List<Action> actions) { this.actions = actions; }
 
-	public void setActions(List<Action> actions) {
-		this.actions = actions;
-	}
+    public Transition getTransition() { return transition; }
+    public void setTransition(Transition transition) { this.transition = transition; }
 
-	public TransitionList getTransitionList() {
-		return transitionList;
-	}
-
-	public void setTransitionList(TransitionList transitionList) {
-		this.transitionList = transitionList;
-	}
-
-	@Override
-	public void accept(Visitor visitor) {
-		visitor.visit(this);
-	}
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
+    }
 }

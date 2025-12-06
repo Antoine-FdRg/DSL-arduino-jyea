@@ -7,3 +7,6 @@ embeddeds/haskell/dist
 node_modules
 generated
 out
+
+.idea
+*.iml

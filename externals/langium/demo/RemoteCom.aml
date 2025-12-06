@@ -1,0 +1,25 @@
+app RemoteComApp initial state bootstrap use SerialMonitor{
+
+    bricks
+    Actuator led: 12
+
+    states
+    bootstrap {
+        led <= LOW
+        send "Press a key to start App ..."
+        receives any => led_off 
+    }
+
+    led_off {
+        led <= LOW
+        send "Press ON to light up the led ..."
+        receives "ON" => led_on
+    }
+
+    led_on {
+        led <= HIGH
+        send "Press OFF to light down the led ..."
+        receives "OFF" => led_off
+    }
+
+}

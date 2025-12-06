@@ -1,0 +1,19 @@
+app lcd_demo initial state idle {
+    bricks
+        Sensor button : 8
+        Actuator led : 9
+        LCD screen
+
+    states
+        idle {
+            led <= LOW
+            screen displays "button := " + button
+            button is HIGH => pressed
+        }
+
+        pressed {
+            led <= HIGH
+            screen displays "led := " + led
+            button is LOW => idle
+        }
+}

@@ -1,0 +1,21 @@
+app RemoteComplexApp initial state off use SerialMonitor{
+    bricks
+    Actuator led: 12
+    Sensor button: 11
+
+    states 
+
+    off {
+        led <= LOW
+        send "Press ON to activate led ..."
+        AND {
+            receives "ON"
+            button is HIGH
+        } => on
+    }
+
+    on {
+        led <= HIGH
+        button is LOW => off
+    }
+}
