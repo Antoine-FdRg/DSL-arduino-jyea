@@ -27,7 +27,6 @@ public class TransitionBuilder implements  IBooleanExpression {
         return this;
     }
 
-//TODO retirer SignalTransitionBuilder et fairte cette methode avec 2 parametres
     public SignalTransitionBuilder when(String sensor) {
         return new SignalTransitionBuilder(this, parent.findSensor(sensor));
     }
@@ -37,6 +36,14 @@ public class TransitionBuilder implements  IBooleanExpression {
     }
     public ConditionListBuilder startOrConditionList() {
         return new ConditionListBuilder(this, LOGIC.OR);
+    }
+
+    public ConditionListBuilder and() {
+        return startAndConditionList();
+    }
+
+    public ConditionListBuilder or() {
+        return startOrConditionList();
     }
 
     public TransitionBuilder waitFor(int delayInMs) {
@@ -68,25 +75,12 @@ public class TransitionBuilder implements  IBooleanExpression {
         if(booleanExpression == null){
             throw new IllegalStateException("No condition defined for going to state: ["+state+"]\nHow to fix  : Define at least one using when(<sensorName>) or waitFor(delayMs)");
         }
-        /* 
-        if(local.getConnector() == null && transitionList.size() > 1){
-            throw new IllegalStateException("Multiple transitions defined without a connector (AND/OR) for going to state: ["+state+"]\nHow to fix  : define a connector using and()/or()");
-        }
-            */
         return parent;
     }
 
    
     public Sensor findSensor(String sensorName) {
         return parent.findSensor(sensorName);
-    }
-
-    public TransitionTableBuilder getParent() {
-        return parent;
-    }
-
-    public Transition getLocal() {
-        return  local;
     }
 
     public BooleanExpression getBooleanExpression() {
@@ -98,10 +92,6 @@ public class TransitionBuilder implements  IBooleanExpression {
         if(booleanExpression == null){
             throw new IllegalStateException("No condition defined for going to error state\nHow to fix  : Define at least one using when(<sensorName>)");
         }
-        /* 
-        if(local.getConnector() == null && transitionList.size() > 1){
-            throw new IllegalStateException("Multiple transitions defined without a connector (AND/OR) for going to error state\nHow to fix  : define a connector using startAnd()/startOr()");
-        }*/
         return parent;
     }
 
