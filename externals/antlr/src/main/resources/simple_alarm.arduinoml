@@ -1,0 +1,20 @@
+application simpleAlarm
+
+# Declaring bricks
+sensor button: 9
+actuator led: 10
+actuator buzzer: 11
+
+# Declaring states
+
+-> off {
+    buzzer <= LOW
+    led <= LOW
+    button is HIGH => on
+}
+
+on {
+    buzzer <= HIGH
+    led <= HIGH
+    button is LOW => off
+}

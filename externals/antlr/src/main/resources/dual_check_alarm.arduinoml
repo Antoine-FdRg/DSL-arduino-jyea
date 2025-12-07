@@ -1,0 +1,22 @@
+application dualCheckAlarm
+
+sensor b1 : 9
+sensor b2 : 10
+actuator led : 12
+
+
+on {
+    led <= HIGH
+    OR {
+        b1 is LOW
+        b2 is LOW
+    } => off
+}
+-> off {
+    led <= LOW
+    AND {
+        b1 is HIGH
+        b2 is HIGH
+    } => on
+}
+
