@@ -1,21 +1,10 @@
 package io.github.mosser.arduinoml.kernel.behavioral;
 
 import io.github.mosser.arduinoml.kernel.generator.Visitor;
-import io.github.mosser.arduinoml.kernel.structural.SerialSensor;
 
-public class SerialTransition extends Transition {
-
-    private SerialSensor sensor;
+public class MessageTransition extends BooleanExpression {
     private String pattern;
     private boolean matchAny;
-
-    public SerialSensor getSensor() {
-        return sensor;
-    }
-
-    public void setSensor(SerialSensor sensor) {
-        this.sensor = sensor;
-    }
 
     public String getPattern() {
         return pattern;

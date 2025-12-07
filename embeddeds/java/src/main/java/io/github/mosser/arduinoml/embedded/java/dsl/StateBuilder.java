@@ -20,8 +20,8 @@ public class StateBuilder {
 
     public StateBuilder sending(String message) {
         SendAction action = new SendAction();
-        action.setMessage(message);
-        local.getSendActions().add(action);
+        action.setSerialMessage(message);
+        local.getActions().add(action);
         return this;
     }
 

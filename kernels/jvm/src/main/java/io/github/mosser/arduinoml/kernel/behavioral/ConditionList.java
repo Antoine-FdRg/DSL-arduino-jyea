@@ -6,27 +6,17 @@ import io.github.mosser.arduinoml.kernel.generator.Visitor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TransitionList implements Visitable {
-    protected List<Transition> transitions = new ArrayList<>();
+public class ConditionList extends BooleanExpression{
     protected LOGIC connector;
-    protected State next;
+    private List<BooleanExpression> expressions = new ArrayList<>();
 
-    public State getNext() {
-        return next;
+    public List<BooleanExpression> getExpressions() {
+        return expressions;
     }
-
-    public void setNext(State next) {
-        this.next = next;
-    }
-
-    public List<Transition> getTransitions() {
-        return transitions;
-    }
-
-    public void setTransitions(List<Transition> transitions) {
-        this.transitions = transitions;
-    }
-
+    public void setExpressions(List<BooleanExpression> expressions) {
+            this.expressions = expressions;
+        }
+        
     public LOGIC getConnector() {
         return connector;
     }

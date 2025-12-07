@@ -5,9 +5,13 @@ import {
     Action,
     Actuator,
     App,
+    MessageTransition,
+    SendAction,
     Sensor,
+    SignalTransition,
     State,
-    TransitionList,
+    TemporalTransition,
+    Transition,
 } from "../language-server/generated/ast";
 import { extractDestinationAndName } from "./cli-util";
 
@@ -93,7 +97,7 @@ LiquidCrystal ${lcdName}(10, 11, 12, 13, 14, 15, 16);
     }
 
     for (const brick of app.bricks) {
-        if (brick.$type === 'DigitalSensor') {
+        if (brick.$type === 'Sensor') {
             fileNode.append(
                 `
 bool ` +
@@ -117,7 +121,7 @@ void setup() {`);
     }
 
     for (const brick of app.bricks) {
-        if (brick.$type === 'DigitalSensor') {
+        if (brick.$type === 'Sensor') {
             compileSensor(brick, fileNode);
         } else if (brick.$type === 'Actuator') {
             compileActuator(brick, fileNode);
@@ -177,7 +181,7 @@ void loop() {`);
 }
 
 function hasSerialCommunication(app: App) {
-    const hasSerialSensor = app.bricks.some(b => b.$type === 'SerialSensor');
+    const hasSerialSensor = app.useSerialMonitor !== undefined;
     const hasSendAction = app.states.some(state => state.actions.some(action => action.$type === 'SendAction'));
     return hasSerialSensor || hasSendAction;
 }
@@ -194,10 +198,9 @@ function compileActuator(actuator: Actuator, fileNode: CompositeGeneratorNode) {
 }
 
 function compileSensor(sensor: Sensor, fileNode: CompositeGeneratorNode) {
-    if (sensor.$type === 'DigitalSensor') {
         fileNode.append(`
     pinMode(` + (sensor as any).inputPin + `, INPUT); // ` + sensor.name + ` [Sensor]`)
-    }
+    
 }
 
 function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial: boolean) {
@@ -209,25 +212,21 @@ function compileState(state: State, fileNode: CompositeGeneratorNode, hasSerial:
     }
 
     if (state.transition !== null) {
-        compileTransition(state.transition, fileNode, hasSerial);
+        compileTransition(state.transition, fileNode);
     }
 
-    fileNode.append(`
-            break;`);
+    fileNode.append(NL,`\t\t\tbreak;`, NL);
 }
 
-
 function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
-    if (action.$type === 'SetAction') {
+    if (action.$type === 'SendAction') {
+
         if (action.lcd) {
             compileLCDAction(action, fileNode);
             return;
         }
-        fileNode.append(`
-            digitalWrite(` + action.actuator?.ref?.outputPin + `, ` + action.value?.value + `);`);
-    } else if (action.$type === 'SendAction') {
         let message = action.message;
-        if (message.startsWith('"') && message.endsWith('"')) {
+        if (message && message.startsWith('"') && message.endsWith('"')) {
             message = message.substring(1, message.length - 1);
         }
         fileNode.append(`
@@ -235,11 +234,14 @@ function compileAction(action: Action, fileNode: CompositeGeneratorNode) {
                 Serial.println("` + message + `");
                 notPrint = false;
             }`);
+        return
     }
+        fileNode.append(`
+            digitalWrite(` + action.actuator?.ref?.outputPin + `, ` + action.value?.value + `);`);
+
 }
 
-function compileLCDAction(action: Action, fileNode: CompositeGeneratorNode) {
-    if (action.$type !== 'SetAction') return;
+function compileLCDAction(action: SendAction, fileNode: CompositeGeneratorNode) {
     if (!action.lcdMessage) return;
 
     const lcdName = action.lcd?.ref?.name ?? "lcd";
@@ -277,92 +279,86 @@ function compileLCDAction(action: Action, fileNode: CompositeGeneratorNode) {
         }
     }
 }
-
-function compileTransition(
-    transition: TransitionList,
-    fileNode: CompositeGeneratorNode,
-    hasSerial: boolean
-) {
-    const transitions: any[] = (transition as any).transitions || [];
-    // Check if this is a TemporalTransitionList (has delay property)
-    if ((transition as any).delay !== undefined) {
-        const delay = (transition as any).delay;
-        const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
-        fileNode.append(
-            `
-            if (millis() - stateEnteredTime > ${delay}) {
-                currentState = ` +
-            nextName +
-            `;
-            }`,
-            NL
-        );
-        return;
-    }
-
-    const digitalTransitions = transitions.filter(t =>
-        (t.$type === 'DigitalTransition' || t.$type === 'SignalTransition') &&
-        t.sensor?.ref?.$type === 'DigitalSensor'
-    );
-    const serialTransitions = transitions.filter(t => t.$type === 'SerialTransition');
-
-    // Handle SignalTransitionList
-    const sensors = new Set<string>();
-    for (const t of digitalTransitions) {
-        const name = t.sensor?.ref?.name;
-        if (name) sensors.add(name);
-    }
-
-    for (const s of Array.from(sensors)) {
-        fileNode.append(
-            `
-            ` +
-            s +
-            `BounceGuard = millis() - ` +
-            s +
-            `LastDebounceTime > debounce;`,
-            NL
-        );
-    }
-
-    const parts = digitalTransitions.map((t) => {
-        const pin = t.sensor?.ref?.inputPin;
-        const name = t.sensor?.ref?.name;
-        const val = t.value?.value;
-        return `(digitalRead(${pin}) == ${val} && ${name}BounceGuard)`;
-    });
-
-
-    for (const t of serialTransitions) {
-        if (t.any) {
-            parts.push(`(serialInput.length() > 0)`);
-        } else if (t.pattern) {
-            let pattern = t.pattern;
-            // Remove quotes if they exist (pattern comes from STRING terminal)
-            if ((pattern.startsWith('"') && pattern.endsWith('"')) ||
-                (pattern.startsWith("'") && pattern.endsWith("'"))) {
-                pattern = pattern.substring(1, pattern.length - 1);
-            }
-            parts.push(`(serialInput == "` + pattern + `")`)
+function recurssiveCompileTransition(transition: Transition, fileNode: CompositeGeneratorNode, parts: string[], debounces: string[]) {   
+    if ((transition as any).transitions.length > 0) {
+        for (const subTransition of (transition as any).transitions) {
+            recurssiveCompileTransition(subTransition, fileNode, parts, debounces);
+        }
+    } else {
+        switch (transition.$type) {
+            case "TemporalTransition":
+                compileTemporalTransition(transition as unknown as TemporalTransition, fileNode, parts);
+                break;
+            case "SignalTransition":
+                compileSignalTransition(transition as unknown as SignalTransition, fileNode, parts, debounces);
+                break;
+            case "MessageTransition":
+                compileMessageTransition(transition as unknown as MessageTransition, fileNode, parts);
+                break;
         }
     }
+}
 
-    const op = (transition as any).connector?.value === 'AND' ? ' && ' : ' || ';
-    const condition = parts.length > 1 ? `(` + parts.join(` ` + op + ` `) + `)` : (parts[0] || 'false');
+function compileTransition(
+    transition: Transition,
+    fileNode: CompositeGeneratorNode
+) {
+    const parts: string[] = [];
+    const debounces: string[] = [];
+    recurssiveCompileTransition(transition, fileNode, parts, debounces);
+
+    const op = (transition as any).connector?.value === 'AND' ? '&&' : '||';
+    if(parts.length === 0){
+        parts.push('true');
+    }
+    const condition = parts.length > 1 ? `(` + parts.join(` ` + op + ` `) + `)` : parts[0];
     const nextName = (transition as any).next?.ref?.name ? (transition as any).next.ref.name : ((transition as any).errorCode !== undefined ? 'error_' + (transition as any).errorCode : undefined);
 
-    const debounceCode = sensors.size > 0
-        ? `
-                ` + Array.from(sensors).map(s => s + `LastDebounceTime = millis();`).join('\n                ')
-        : '';
+    const debounceCode = debounces.length > 0 ? `\n\t\t\t\t` + debounces.join(`\n\t\t\t\t`) : '';
+    const hasSerial = hasSerialCommunication(transition.$container.$container as App);
 
     const notPrintCode = hasSerial ? `
                 notPrint = true;` : '';
 
     fileNode.append(`
             if (` + condition + `) {` + debounceCode + `
-                currentState = ` + nextName + `;` + notPrintCode + `
-            }`, NL);
+                currentState = ` + nextName + `;` +
+                notPrintCode + `
+            }`);
+}
+
+function compileTemporalTransition(transition:TemporalTransition, fileNode:any, parts: string[]) {
+    const delay = transition.delay;
+    parts.push(`(millis() - stateEnteredTime > ${delay})`);
+    return;
+}
+
+function compileSignalTransition(transition:SignalTransition, fileNode:any, parts: string[], debounces: string[]) {
+    const sensorName = transition.sensor?.ref?.name;
+    fileNode.append(
+        NL, 
+        "\t\t\t" + sensorName + `BounceGuard = millis() - ` +
+        sensorName +`LastDebounceTime > debounce;`
+    );
+    debounces.push(sensorName + `LastDebounceTime = millis();`);
+    const pin = transition.sensor?.ref?.inputPin;
+    const name = transition.sensor?.ref?.name;
+    const val = transition.value?.value;
+    parts.push(`(digitalRead(${pin}) == ${val} && ${name}BounceGuard)`);
+    return
+}
+
+function compileMessageTransition(transition:MessageTransition, fileNode:any, parts: string[]) {
+    if (transition.any) {
+        parts.push(`(serialInput.length() > 0)`);
+    } else if (transition.pattern) {
+        let pattern = transition.pattern;
+        if ((pattern.startsWith('"') && pattern.endsWith('"')) ||
+            (pattern.startsWith("'") && pattern.endsWith("'"))) {
+            pattern = pattern.substring(1, pattern.length - 1);
+        }
+        parts.push(`(serialInput == "` + pattern + `")`)
+    }
 }
 
 function compileErrorLedActuatorCode(app: App, fileNode: CompositeGeneratorNode) {

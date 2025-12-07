@@ -11,7 +11,7 @@ public class RemoteCommunicationDemo {
 
         App myApp =
             application("RemoteCommunicationApp")
-                .uses(serialSensor("keyboard"))
+                .useSerialMonitor()
                 .uses(actuator("led", 12))
                 .hasForState("off").initial()
                     .setting("led").toLow()
@@ -23,10 +23,10 @@ public class RemoteCommunicationDemo {
                 .endState()
                     .beginTransitionTable()
                     .from("off")
-                        .whenSerial("keyboard").receives("\"ON\"")
+                        .receives("\"ON\"")
                     .goTo("on")
                     .from("on")
-                        .whenSerial("keyboard").receivesAny()
+                        .receivesAny()
                     .goTo("off")
                     .endTransitionTable()
                 .build();
